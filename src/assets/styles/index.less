@@ -1,0 +1,124 @@
+@primary-color: #6e7bb3e5;
+@accent-color: #f1d072b6;
+@border-color: #272222ef;
+@shadow-color: #a19c9cef;
+
+@light-bg: #e1e3e4a2;
+@dark-bg: #272d33;
+@page-bg: #f5f5f5;
+@cover-bg: #71a39ce0;
+@white-bg: #f6fffdb4;
+
+@text-white: #f8f8f8;
+@text-black: #111;
+@text-red: #ff724fec;
+@text-vice: #555;
+
+@toolbar-height: 64px;
+
+@base-radius: 5px;
+@page-pad: 48px;
+
+@icon-size: 32px;
+
+.primary-bg {
+  background-color: @primary-color;
+}
+.accent-bg {
+  background-color: @accent-color;
+}
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.thin-border {
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-top: 1px solid @border-color;
+    width: 200%;
+    height: 200%;
+    transform-origin: 0 0;
+    transform: scale(0.5,0.5);
+    box-sizing: border-box;
+  }
+}
+
+.hover-fade {
+  opacity: .7;
+  transition: all .5s;
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.center-horizontal {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 0);
+}
+
+.slide-in-left {
+  animation: slideInLeft 1s 1 forwards;
+  @keyframes slideInLeft {
+    from { left: 36px; }
+    to { left: 64px; }
+  }
+}
+.slide-out-left {
+  animation: slideOutLeft 1s 1;
+  @keyframes slideOutLeft {
+    from { left: 64px; }
+    to { left: 36px; }
+  }
+}
+
+// 字体
+@font-face {
+  font-family: Kaiti;
+  src: url('~@/assets/fonts/kaiti.ttf')
+}
+@font-face {
+  font-family: Weibei;
+  src: url('~@/assets/fonts/weibei.ttf')
+}
+@font-face {
+  font-family: Zhuanti;
+  src: url('~@/assets/fonts/zhuanti.ttf')
+}
+@font-face {
+  font-family: Xingkai;
+  src: url('~@/assets/fonts/xingkai.ttf')
+}
+@font-face {
+  font-family: Lishu;
+  src: url('~@/assets/fonts/lishu.ttf')
+}
+
+.v-title(@size) {
+  font-weight: bold;
+  line-height: @size * 1.5;
+  .v-text(@size)
+}
+.v-text(@size) {
+  width: @size;
+  font-size: @size;
+}
+.h-text(@size) {
+  font-size: @size;
+  line-height: @size * 1.5;
+  text-indent: 2em;
+}
+
+// 动画
+@keyframes bgFloat {
+  0% {background-position: 0% 0%}
+  25% {background-position: 100% 0%}
+  50% {background-position: 100% 100%}
+  75% {background-position: 0% 100%}
+  100% {background-position: 0% 0%}
+}

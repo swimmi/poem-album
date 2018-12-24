@@ -18,18 +18,8 @@ const poemSchema = Schema({
   content: String,                            // 内容
   desc: String,                               // 介绍
   annotation: String,                         // 注解
-  images: [                                   // 配图，文件地址
-    {
-      title: String,
-      url: String,
-    }
-  ],
-  musics: [                                   // 配乐，文件地址
-    {
-      title: String,
-      url: String,
-    }
-  ],
+  image: String,
+  music: String,
   reads: [                                    // 朗读，文件地址
     {
       title: String,

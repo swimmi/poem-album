@@ -23,6 +23,7 @@ var strings = {
   next: '前进',
   submit: '提交',
   no_content: '暂无内容',
-  favorite_success: '收藏成功'
+  favorite_success: '收藏成功',
+  select_image_tip: '请选择图片文件',
 }
 module.exports = { strings }

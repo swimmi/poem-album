@@ -55,9 +55,6 @@
           <textarea class="input-control" type="text" rows="6" v-model="poem.annotation" onpaste="return false;"></textarea>
         </div>
       </div>
-      <div v-show="step == 2" class="input-container animated fadeIn">
-        <img />
-      </div>
     </div>
   </div>
 </template>
@@ -87,7 +84,7 @@ export default {
       },
       types: data.type,
       periods: data.period,
-      stepNames: ['信息','文本','配图','配乐','朗读','手书'],
+      stepNames: ['信息','文本'],
       step: 0,
       loading: true
     }
@@ -141,12 +138,10 @@ export default {
 <style lang="less" scoped>
 .new-poem {
   position: absolute;
-  left: 202px;
-  width: 400px;
   height: calc(100% - @page-pad * 2);
-  padding: calc(@page-pad * 2) @page-pad 0px @page-pad;
+  padding: @page-pad * 2 @page-pad * 2 0 @page-pad * 2;
   color: @primary-color;
-  background-color: @cover-bg;
+  background-color: lighten(@vice-color, 10%);
   box-shadow: 0px 0px 2px @primary-color;
   z-index: 3;
   -webkit-user-select: none;
@@ -229,7 +224,7 @@ export default {
           outline: none;
           border: none;
           font-size: 16px;
-          color: @text-vice;
+          color: @text-black;
           letter-spacing: 2px;
           z-index: 4;
           resize: none;

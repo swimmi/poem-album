@@ -54,12 +54,12 @@ router.post('/poem/search', (req, res) => {
     limit(limit).
     exec((err, data) => {res.send(err?err:data)})
 })
-
-router.get('/:dir/:id/:name', function(req, res) {
-  var dir = req.params.dir
+// 获取服务器文件
+router.get('/:type/:id/:name', function(req, res) {
+  var type = req.params.type
   var id = req.params.id
   var options = {
-    root: __dirname + `/uploads/${dir}/${id}/`,
+    root: __dirname + `/uploads/${type}/${id}/`,
     dotfiles: 'deny',
     headers: {
         'x-timestamp': Date.now(),
@@ -73,18 +73,20 @@ router.get('/:dir/:id/:name', function(req, res) {
     }
   })
 })
-router.post('/upload/record', function(req, res) {
+// 上传文件到服务器
+router.post('/upload/', function(req, res) {
   if (Object.keys(req.files).length == 0) {
     return res.status(400).send('None')
   }
+  const type = req.body.type
   const id = req.body.id
   let files = req.files.file
   if (Array.isArray(files)) {
     files.forEach(file => {
-      file.mv(`uploads/records/${id}/` + file.name)
+      file.mv(`uploads/${type}/${id}/` + file.name)
     })
   } else {
-    files.mv(`uploads/records/${id}/` + files.name)
+    files.mv(`uploads/${type}/${id}/` + files.name)
   }
   res.send('File uploaded!')
 })

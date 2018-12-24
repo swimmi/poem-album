@@ -1,7 +1,13 @@
 // 将数字转换为汉字
 var parseNumber = function (num) {
+  var str = ''
   const chars = '零一二三四五六七八九'
-  return num
+  const numStr = num + ''
+  for (var i = 0; i< numStr.length; i ++) {
+    const c = parseInt(numStr.charAt(i))
+    str += chars[c]
+  }
+  return str
 }
 
 var parseColumn = function (content) {
@@ -64,8 +70,20 @@ var getTimeStr = function () {
   return `${ch}时${parseNumber(cm)}刻`
 }
 
+var getObjectURL = function (file) {
+  var url = null
+  if (window.createObjectURL != undefined) {
+    url = window.createObjectURL(file)
+  } else if (window.URL != undefined) {
+    url = window.URL.createObjectURL(file)
+  } else if (window.webkitURL != undefined) {
+    url = window.webkitURL.createObjectURL(file)
+  }
+  return url
+}
+
 export default {
   functions: {
-    parseNumber, parseColumn, splitToColumns, splitToSentences, getTimeStr
+    parseNumber, parseColumn, splitToColumns, splitToSentences, getTimeStr, getObjectURL
   }
 }

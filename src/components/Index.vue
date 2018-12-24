@@ -3,7 +3,7 @@
     <audio src="" loop autoplay preload="true"/>
     <div v-if="loading"></div>
     <div v-else class="content" :style="{width: w + 'px', height: h + 'px'}">
-      <div class="message-box animated bounceIn"
+      <div class="message-box"
         :class="{'message-show': messageShow, 'message-hide': !messageShow}"
         @click="messageShow = false"
         @mouseover="stopMessageHide"
@@ -11,25 +11,19 @@
         <div class="message-title"><span>{{ message.title }}</span></div>
         <div class="message-content"><span>{{ message.content }}</span></div>
       </div>
-      <transition enter-active-class="fadeIn" leave-active-class="fadeOut">
-        <div class="action-btn animated" v-if="!isOpened">
-          <div class="add-btn" @click="showNew = !showNew"><span class="btn-label">{{ $str.new }}</span><span class="icon-btn"><img src="~@/assets/images/add.png"/></span></div>
-          <div class="search-btn" @click="searchPoem"><span class="btn-label">{{ $str.search }}</span><span class="icon-btn"><img src="~@/assets/images/search.png"/></span></div>
-        </div>
-      </transition>
       <div class="album" id="album">
         <div class="page">
           <Cover></Cover>
         </div>
-        <div class="page" v-for="(item, index) in poems">
-          <section><Left :id="item._id"></Left></section>
-          <section><Right :id="item._id"></Right></section>
+        <div class="page">
+          <New :id="poemId"></New>
         </div>
-      </div>
-      <div class="new" :style="{width: w / 2 + 'px',  height: h + 'px'}">
-        <transitionenter-active-class="fadeInUp" leave-active-class="fadeOutUp">
-          <New v-if="showNew" class="animated" :id="poemId"></New>
-        </transition>
+        <div class="page">
+          <Catalog></Catalog>
+        </div>
+        <div class="page" v-for="(item, index) in poems">
+          <Poem :id="item._id"></Poem>
+        </div>
       </div>
     </div>
   </div>
@@ -38,17 +32,17 @@
 <script>
 import turn from 'st/js/turn.min'
 import Cover from '@/components/Cover'
-import Left from '@/components/Left'
-import Right from '@/components/Right'
+import Poem from '@/components/Poem'
 import New from '@/components/New'
+import Catalog from '@/components/Catalog'
 import { getAllPoems } from '@/api/poem'
 export default {
   name: 'Index',
   components: {
     Cover,
-    Left,
-    Right,
-    New
+    Poem,
+    New,
+    Catalog
   },
   data () {
     return {
@@ -56,9 +50,9 @@ export default {
       h: 0,
       poems: [],
       isOpened: false,
-      showNew: false,
+      showNew: true,
       poemId: '',
-      messageShow: true,
+      messageShow: false,
       message: {
         title: '',
         content: '',
@@ -71,6 +65,7 @@ export default {
   mounted() {
     this.$bus.on('message', this.showMessage)
     this.$bus.on('editPoem', this.editPoem)
+    this.$bus.on('openAlbum', this.openAlbum)
     this.init()
     this.load()
     window.onresize = () => {
@@ -90,7 +85,6 @@ export default {
           $('#album').turn({
             width: this.w,
             height: this.h,
-            display: 'single',
             direction: 'rtl',
             elevation: 50,
             gradients: true
@@ -98,6 +92,7 @@ export default {
           $('#album').bind('turning', (event, page, view) => {
             if (page == 1) {
               this.isOpened = false
+              this.showNew = true
             } else {
               this.showNew = false
               this.isOpened = true
@@ -115,7 +110,6 @@ export default {
       }
     },
     searchPoem () {
-      this.$bus.emit('message', '提示', '您中奖啦！')
     },
     stopMessageHide () {
       clearTimeout(this.message.timeout)
@@ -128,96 +122,38 @@ export default {
       this.message.timeout = setTimeout(() => {
         this.messageShow = false
       }, 3000)
+    },
+    openAlbum (page) {
+      setTimeout(() => {
+        $('#album').turn('page', page * 2)
+      }, 1000)
     }
   }
 }
 </script>
-
 <style lang="less" scoped>
 .main {
   width: 100%;
   height: 100vh;
   background: @dark-bg;
   -webkit-user-select: none;
+  overflow: hidden;
   .flex-center();
   .content {
     position: relative;
     .album {
       cursor: pointer;
-      z-index: 3;
       .page {
-        display: flex;
-        position: relative;
         background: @page-bg;
-        section {
-          flex: 1;
-        }
-      }
-    }
-    .new {
-      position: absolute;
-      left: 50%;
-      top: 0px;
-      .flex-center();
-    }
-  }
-  .action-btn {
-    display: flex;
-    position: absolute;
-    top: -10px;
-    right: 80px;
-    z-index: 4;
-    overflow: hidden;
-    div {
-      position: relative;
-      height: 58px;
-      width: 48px;
-      margin: 0px 8px;
-      text-align: center;
-      background: lighten(@accent-color, 10%);
-      color: @text-white;
-      transition: all 1s;
-      cursor: pointer;
-      &:hover {
-        background: darken(@accent-color, 10%);
-        height: 120px;
-      }
-      &:before {
-        content: '';
-        width: 0;
-        height: 0;
-        top: -18px;
-        right: -28px;
-        border-width: 0px 10px 10px 0px;
-        border-style: solid;
-        border-color: transparent transparent lighten(@accent-color, 20%) transparent;
-        margin: 40px auto;
-        position: relative;
-      }
-      .btn-label {
-        .center-horizontal();
-        bottom: 54px;
-        .v-text(18px);
-      }
-      .icon-btn {
-        display: block;
-        width: @icon-size;
-        height: @icon-size;
-        bottom: 8px;
-        .center-horizontal();
-        img {
-          width: @icon-size;
-          height: @icon-size;
-        }
       }
     }
   }
   .message-box {
     .center-horizontal();
     width: 300px;
-    background: @cover-bg;
+    background: @vice-color;
     border-radius: @base-radius * 2;
-    box-shadow: @white-bg 0px 0px 4px;
+    box-shadow: @shadow-color 0px 0px 4px;
     color: @text-white;
     padding: 4px 8px;
     text-align: center;

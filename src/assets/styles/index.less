@@ -1,17 +1,17 @@
 @primary-color: #6e7bb3e5;
-@accent-color: #f1d072b6;
+@vice-color: #71a39ce0;
+@accent-color: #eee566c4;
 @border-color: #272222ef;
 @shadow-color: #a19c9cef;
 
 @light-bg: #e1e3e4a2;
 @dark-bg: #272d33;
 @page-bg: #f5f5f5;
-@cover-bg: #71a39ce0;
 @white-bg: #f6fffdb4;
 
 @text-white: #f8f8f8;
 @text-black: #111;
-@text-red: #ff724fec;
+@text-red: #fd5930ec;
 @text-vice: #555;
 
 @toolbar-height: 64px;
@@ -21,12 +21,6 @@
 
 @icon-size: 32px;
 
-.primary-bg {
-  background-color: @primary-color;
-}
-.accent-bg {
-  background-color: @accent-color;
-}
 .flex-center {
   display: flex;
   justify-content: center;
@@ -56,6 +50,12 @@
   }
 }
 
+.center-parent {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
 .center-horizontal {
   position: absolute;
   left: 50%;
@@ -111,7 +111,7 @@
 .h-text(@size) {
   font-size: @size;
   line-height: @size * 1.5;
-  text-indent: 2em;
+  letter-spacing: 1px;
 }
 
 // 动画

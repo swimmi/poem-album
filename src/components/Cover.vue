@@ -1,6 +1,6 @@
 <template>
   <div class="cover" :style="{backgroundImage: 'url('+ bg + ')'}">
-    <div class="cover-title">
+    <div class="cover-title" :class="{'animated bounceOut': isOpen}" @click="openAlbum">
       <span>{{ $str.title }}</span>
     </div>
     <div class="cover-spine">
@@ -11,7 +11,17 @@
 export default {
   data () {
     return {
-      bg: 'static/images/bg/10.jpg'
+      isOpen: false,
+      bg: 'static/images/bg/17.jpg'
+    }
+  },
+  methods: {
+    openAlbum () {
+      this.isOpen = true
+      this.$bus.emit('openAlbum', 1)
+      setTimeout(() => {
+        this.isOpen = false
+      }, 1000)
     }
   }
 }
@@ -24,10 +34,9 @@ export default {
   border-radius: 2px;
   background-color: white;
   background-repeat: no-repeat;
-  background-size: auto 200vh;
-  background-position: 0px 0%;
+  background-position: 0 0;
   -webkit-user-select: none;
-  animation: bgFloat 120s ease-in-out infinite;
+  //animation: bgFloat 120s ease-in-out infinite;
   .cover-title {
     position: absolute;
     top: 15%;

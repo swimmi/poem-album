@@ -1,5 +1,5 @@
 <template>
-  <div>目录</div>
+  <div></div>
 </template>
 <script>
 export default {

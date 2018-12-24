@@ -13,6 +13,7 @@
     "animate.css": "^3.7.0",
     "axios": "^0.18.0",
     "body-parser": "^1.18.3",
+    "cropperjs": "^1.4.3",
     "express": "^4.16.4",
     "express-fileupload": "^1.0.0",
     "jquery": "^3.3.1",

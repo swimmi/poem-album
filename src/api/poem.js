@@ -7,6 +7,9 @@ export const addPoem = async function (params) {
 export const updatePoem = async function (params) {
   return (await api.post("/poem/update", params)).data
 }
+export const updateAnyPoem = async function (params) {
+  return (await api.post("/poem/update/any", params)).data
+}
 export const updatePoemContent = async function (params) {
   return (await api.post('/poem/content/update', params)).data
 }

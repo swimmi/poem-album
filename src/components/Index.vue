@@ -3,20 +3,15 @@
     <audio src="" loop autoplay preload="true"/>
     <div v-if="loading"></div>
     <div v-else class="content" :style="{width: w + 'px', height: h + 'px'}">
-      <div class="message-box"
-        :class="{'message-show': messageShow, 'message-hide': !messageShow}"
-        @click="messageShow = false"
-        @mouseover="stopMessageHide"
-        @mouseleave="messageShow = false">
-        <div class="message-title"><span>{{ message.title }}</span></div>
-        <div class="message-content"><span>{{ message.content }}</span></div>
-      </div>
       <div class="album" id="album">
         <div class="page">
           <Cover></Cover>
         </div>
         <div class="page">
-          <New :id="poemId"></New>
+          <New></New>
+        </div>
+        <div class="page">
+          <Catalog></Catalog>
         </div>
         <div class="page">
           <Catalog></Catalog>
@@ -25,17 +20,35 @@
           <Poem :id="item._id"></Poem>
         </div>
       </div>
+      <div class="pad" v-show="writable">
+        <canvas id="writePad" :width="w" :height="h"></canvas>
+      </div>
+        <div class="modal cropper-container animated" v-show="cropper.show">
+          <input type="file" hidden ref="imageFile" accept="image/*" @change="changeImage"/>
+          <transition enter-active-class="fadeIn" leave-active-class="fadeIn">
+            <div class="cropper">
+              <img ref="cropperImage" :src="cropper.url"/>
+            </div>
+          </transition>
+          <div class="cropper-btn btn-group">
+            <span class="image-btn" @click="cropper.show = false"><img src="~@/assets/images/close.png"/></span>
+            <span class="image-btn" @click="uploadImage"><img src="~@/assets/images/ok.png"/></span>
+          </div>
+        </div>
     </div>
   </div>
 </template>
 
 <script>
+import 'cropperjs/dist/cropper.css'
+import Cropper from 'cropperjs'
+import SignaturePad from 'signature_pad'
 import turn from 'st/js/turn.min'
 import Cover from '@/components/Cover'
 import Poem from '@/components/Poem'
 import New from '@/components/New'
 import Catalog from '@/components/Catalog'
-import { getAllPoems } from '@/api/poem'
+import { getAllPoems, updateAnyPoem } from '@/api/poem'
 export default {
   name: 'Index',
   components: {
@@ -46,87 +59,116 @@ export default {
   },
   data () {
     return {
+      inited: false,
       w: 0,
       h: 0,
       poems: [],
-      isOpened: false,
-      showNew: true,
       poemId: '',
-      messageShow: false,
-      message: {
-        title: '',
-        content: '',
-        type: '',
-        timeout: '',
+      // 图片裁剪
+      cropper: {
+        self: null,
+        url: '',
+        show: false
       },
+      writable: false,
       loading: true
     }
   },
   mounted() {
-    this.$bus.on('message', this.showMessage)
     this.$bus.on('editPoem', this.editPoem)
     this.$bus.on('openAlbum', this.openAlbum)
+    this.$bus.on('loadPoems', this.loadPoems)
+    this.$bus.on('changeImage', this.chooseImage)
     this.init()
-    this.load()
     window.onresize = () => {
       this.init()
+    }
+  },
+  updated () {
+    if (!this.inited) {
+      this.initCropper()
+      this.initTurn()
+      this.inited = true
     }
   },
   methods: {
     init () {
       this.h = document.documentElement.clientHeight * .9
       this.w = this.h * 1.6
+      this.loadPoems()
     },
-    load () {
+    loadPoems () {
       getAllPoems({}).then(res => {
         this.poems = res
         this.loading = false
-        this.$nextTick(() => {
-          $('#album').turn({
-            width: this.w,
-            height: this.h,
-            direction: 'rtl',
-            elevation: 50,
-            gradients: true
-          })
-          $('#album').bind('turning', (event, page, view) => {
-            if (page == 1) {
-              this.isOpened = false
-              this.showNew = true
-            } else {
-              this.showNew = false
-              this.isOpened = true
-            }
-          })
-        })
       })
     },
     editPoem (id) {
-      this.showNew = !this.showNew
-      if (this.showNew) {
-        this.poemId = id
-      } else {
-        this.poemId = ''
-      }
-    },
-    searchPoem () {
-    },
-    stopMessageHide () {
-      clearTimeout(this.message.timeout)
-    },
-    showMessage (content, title, type) {
-      this.stopMessageHide()
-      this.message.title = title
-      this.message.content = content
-      this.messageShow = true
-      this.message.timeout = setTimeout(() => {
-        this.messageShow = false
-      }, 3000)
+      this.$bus.emit('loadPoem', id)
+      $('#album').turn('page', 2)
     },
     openAlbum (page) {
       setTimeout(() => {
-        $('#album').turn('page', page * 2)
+        $('#album').turn('page', page)
       }, 1000)
+    },
+    initTurn () {
+      this.$nextTick(() => {
+        $('#album').turn({
+          width: this.w,
+          height: this.h,
+          direction: 'rtl',
+          elevation: 50,
+          gradients: true,
+          autoCenter: true
+        })
+      })
+    },
+    initWritePad () {
+      var canvas = document.getElementById('writePad')
+      var signaturePad = new SignaturePad(canvas)
+      signaturePad.toDataURL("image/png")
+    },
+    // 初始化Cropper
+    initCropper () {
+      this.$nextTick(() => {
+        this.cropper.self = new Cropper(this.$refs.cropperImage, {
+          aspectRatio: 2 / 3,
+          viewMode: 1
+        })
+      })
+    },
+    // 打开文件选择
+    chooseImage (id) {
+      if (this.poemId == id && this.cropper.url != '') {
+        this.cropper.show = true
+      } else {
+        this.$refs.imageFile.click()
+      }
+      this.poemId = id
+    },
+    // 处理选择图片
+    changeImage (e) {
+      var files = e.target.files || e.dataTransfer.files
+      if (!files.length) return
+      this.cropper.url = this.$util.getObjectURL(files[0])
+      this.cropper.self.replace(this.cropper.url)
+      this.cropper.show = true
+    },
+    uploadImage () {
+      console.log(this.cropper.self)
+      this.cropper.self.getCroppedCanvas().toBlob((blob) => {
+        var form = new FormData()
+        const name = `${this.poemId}.png`
+        form.append('type', 'images')
+        form.append('id', this.id)
+        form.append('file', blob, name)
+        this.$util.uploadForm(form)
+        updateAnyPoem({'id': poemId, 'image': name}).then(res => {
+          console.log(res)
+        })
+      })
+      this.cropper.show = false
     }
   }
 }
@@ -147,38 +189,23 @@ export default {
         background: @page-bg;
       }
     }
-  }
-  .message-box {
-    .center-horizontal();
-    width: 300px;
-    background: @vice-color;
-    border-radius: @base-radius * 2;
-    box-shadow: @shadow-color 0px 0px 4px;
-    color: @text-white;
-    padding: 4px 8px;
-    text-align: center;
-    z-index: 9;
-    cursor: pointer;
-    .message-title {
-      line-height: 24px;
+    .pad {
+      .center-parent();
+      z-index: 99;
     }
-    .message-content {
-      height: 32px;
-      line-height: 32px;
-    }
-  }
-  .message-show {
-    animation: messageShow 1s 1 forwards;
-    @keyframes messageShow {
-      from { top: -120px; }
-      to { top: 40px; }
-    }
-  }
-  .message-hide {
-    animation: messageHide 1s 1 forwards;
-    @keyframes messageHide {
-      from { top: 40px; }
-      to { top: -120px; }
+    .cropper-container {
+      .cropper {
+        .center-parent();
+        width: 800px;
+        height: auto;
+        img {
+          max-width: 100%;
+        }
+      }
+      .cropper-btn {
+        .center-vertical();
+        right: 120px;
+      }
     }
   }
 }

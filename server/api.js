@@ -29,12 +29,17 @@ router.post('/poem/update', (req, res) => {
     'content': poem.content,
     'desc': poem.desc,
     'annotation': poem.annotation,
-    'images': poem.images,
-    'musics': poem.musics,
+    'image': poem.image,
+    'music': poem.music,
     'reads': poem.reads,
     'writes': poem.writes,
     'locked': poem.locked
   }, (err, data) => {res.send(err?err:data)})
+})
+router.post('/poem/update/any', (req, res) => {
+  const id = req.body.id
+  const any = req.body.any
+  models.Poem.updateOne({_id: id}, any, (err, data) => {res.send(err?err:data)})
 })
 router.post('/poem/get', (req, res) => {
   models.Poem.findById(req.body.id, (err, data) => {res.send(err?err:data)})

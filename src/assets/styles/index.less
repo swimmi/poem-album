@@ -1,12 +1,13 @@
 @primary-color: #6e7bb3e5;
-@vice-color: #71a39ce0;
-@accent-color: #eee566c4;
+@vice-color: #7da8a3e0;
+@accent-color: #eee566ce;
 @border-color: #272222ef;
 @shadow-color: #a19c9cef;
 
 @light-bg: #e1e3e4a2;
 @dark-bg: #272d33;
-@page-bg: #f5f5f5;
+@page-bg: #fafaf2;
+@modal-bg: #0f0f0fda;
 @white-bg: #f6fffdb4;
 
 @text-white: #f8f8f8;
@@ -50,6 +51,36 @@
   }
 }
 
+.divider {
+  @size: 12px;
+  width: calc(100% - @size * 2);
+  height: 1px;
+  background-color: fade(@border-color, 5%);
+  margin: @size;
+}
+
+.image-btn {
+  width: 48px;
+  height: 48px;
+  margin: 8px;
+  border-radius: @base-radius;
+  .flex-center();
+  .hover-fade();
+  cursor: pointer;
+  img {
+    width: 24px;
+    height: auto;
+  }
+  &:hover {
+    background-color: @text-white;
+  }
+}
+.btn-group {
+  .image-btn {
+    margin: 16px;
+  }
+}
+
 .center-parent {
   position: absolute;
   left: 50%;
@@ -60,6 +91,42 @@
   position: absolute;
   left: 50%;
   transform: translate(-50%, 0);
+}
+.center-vertical {
+  position: absolute;
+  top: 50%;
+  transform: translate(0, -50%);
+}
+
+.message-show {
+  animation: showMessage 1s 1 forwards;
+  @keyframes showMessage {
+    from { top: -120px; }
+    to { top: 40px; }
+  }
+}
+.message-hide {
+  animation: hideMessage 1s 1 forwards;
+  @keyframes hideMessage {
+    from { top: 40px; }
+    to { top: -120px; }
+  }
+}
+
+.shadow {
+  box-shadow: @shadow-color 0px 0px 12px;
+  &:hover {
+    box-shadow: @shadow-color 2px 2px 20px;
+  }
+}
+
+.modal {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0px;
+  left: 0px;
+  background: @modal-bg;
 }
 
 .slide-in-left {
@@ -114,6 +181,12 @@
   letter-spacing: 1px;
 }
 
+.float-bg (@time) {
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: auto 200%;
+  animation: bgFloat @time ease-in-out infinite;
+}
 // 动画
 @keyframes bgFloat {
   0% {background-position: 0% 0%}

@@ -18,7 +18,7 @@ export default {
   methods: {
     openAlbum () {
       this.isOpen = true
-      this.$bus.emit('openAlbum', 1)
+      this.$bus.emit('openAlbum', 4)
       setTimeout(() => {
         this.isOpen = false
       }, 1000)
@@ -33,13 +33,11 @@ export default {
   height: 100%;
   border-radius: 2px;
   background-color: white;
-  background-repeat: no-repeat;
-  background-position: 0 0;
   -webkit-user-select: none;
-  //animation: bgFloat 120s ease-in-out infinite;
+  .float-bg(90s);
   .cover-title {
     position: absolute;
-    top: 15%;
+    top: 10%;
     left: 10%;
     background: @white-bg;
     box-shadow: @white-bg 0px 0px 4px;
@@ -50,7 +48,7 @@ export default {
       display: block;
       width: @size;
       padding: 16px 8px;
-      font-family: 'Weibei';
+      font-family: 'Xingkai';
       font-size: @size;
       color: @primary-color;
       transition: all 1s;

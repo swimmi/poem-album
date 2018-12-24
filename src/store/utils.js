@@ -23,19 +23,6 @@ var parseColumn = function (content) {
   return c
 }
 
-var splitToColumns = function (content, size) {
-  var columns = []
-  var text = content.replace(/\n/g, '＠＠')
-  for (var i = 0; i < text.length; i+= size) {
-    var column = parseColumn(text.substr(i, size))
-    if (column.charAt(0) == '＠') {
-      column = column.substring(2)
-    }
-    columns.push(column)
-  }
-  return columns
-}
-
 var splitToSentences = function (content) {
   const regex = new RegExp(/(。|；|？|！)/g)
   content = content.replace(regex, '$1 ').replace(/\n/g, '').trim()
@@ -82,8 +69,17 @@ var getObjectURL = function (file) {
   return url
 }
 
+var uploadForm = function (form) {
+  const config = {
+    headers: {'Content-Type': 'multipart/form-data'}
+  }
+  this.$http.post('/api/upload', form, config).then(res => {
+    console.log(res)
+  })
+}
+
 export default {
   functions: {
-    parseNumber, parseColumn, splitToColumns, splitToSentences, getTimeStr, getObjectURL
+    parseNumber, parseColumn, splitToSentences, getTimeStr, getObjectURL, uploadForm
   }
 }

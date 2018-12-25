@@ -20,18 +20,8 @@ const poemSchema = Schema({
   annotation: String,                         // 注解
   image: String,
   music: String,
-  reads: [                                    // 朗读，文件地址
-    {
-      title: String,
-      url: String,
-    }
-  ],
-  writes: [                                   // 手书，文件地址
-    {
-      title: String,
-      url: String,
-    }
-  ],
+  reads: [],
+  writes: [],
   notes: [],                                  // 笔记
   locked: { type: Boolean, default: false },  // 是否锁定
   number: {

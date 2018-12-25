@@ -2,14 +2,14 @@
 @vice-color: #7da8a3e0;
 @accent-color: #eee566ce;
 @border-color: #272222ef;
-@shadow-color: #a19c9cef;
+@shadow-color: #868686e1;
 @stamp-color: #ff0000;
 
 @light-bg: #e1e3e4a2;
 @dark-bg: #272d33;
 @page-bg: #fdfdfb;
-@modal-bg: #0f0f0fda;
-@white-bg: #f6fffdb4;
+@modal-bg: #0e0d0df1;
+@white-bg: #f4fffdd3;
 
 @text-white: #f8f8f8;
 @text-black: #333;
@@ -24,6 +24,9 @@
 
 @icon-size: 32px;
 
+span {
+  display: block;
+}
 .flex-center {
   display: flex;
   justify-content: center;
@@ -74,7 +77,17 @@
     height: auto;
   }
   &:hover {
+    background-color: @light-bg;
+  }
+}
+.light-btn {
+  &:hover {
     background-color: @text-white;
+  }
+}
+.dark-btn {
+  &:hover {
+    background-color: @shadow-color;
   }
 }
 .btn-group {
@@ -129,6 +142,7 @@
   top: 0px;
   left: 0px;
   background: @modal-bg;
+  z-index: 3;
 }
 .invisible {
   visibility: hidden;
@@ -186,6 +200,14 @@
   letter-spacing: 1px;
 }
 
+.flash-btn {
+  animation: flashBtn 3s infinite;
+  @keyframes flashBtn {
+    0% { opacity: 1; }
+    50% { opacity: .3; }
+    100% { opacity: 1; }
+  }
+}
 .flash-text {
   animation: flashText 3s infinite;
   opacity: 1!important;

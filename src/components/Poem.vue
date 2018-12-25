@@ -3,11 +3,15 @@
   <div v-else class="poem">
     <div class="poem-header">
       <div class="poem-title">
-        <span class="title">{{ poem.title }}</span>
+        <marquee v-if="poem.title.length >= 10" class="title title-long" direction="up" scrollamount="10">{{ poem.title }}</marquee>
+        <span v-else class="title">{{ poem.title }}</span>
         <span class="edit-btn" @click="editPoem"><img src="~@/assets/images/edit.png"/></span>
       </div>
       <div class="poem-author">
         <span class="name">{{ poem.author }}</span>
+      </div>
+      <div class="poem-reads">
+        <span class="record-btn" @click="recordPoem"><img src="~@/assets/images/read.png" /></span>
       </div>
     </div>
     <div class="poem-main">
@@ -50,14 +54,12 @@
     </div>
     <div class="poem-stamp-container" v-show="pageIndex == pages.length - 1">
       <div
-        class="poem-stamp poem-author-stamp animated pulse"
-        :title="$str.poem_author + '：' + poem.author">
+        class="poem-stamp poem-author-stamp animated pulse">
         <span>{{ stampText(poem.author) }}</span>
       </div>
       <div
         class="poem-stamp poem-understand-stamp"
         :class="{'stamp-off': !poem.status.understand, 'animated pulse': poem.status.understand}"
-        :title="$str.understand + $str.poem"
         @click="understandPoem">
         <span>{{ $str.ed + $str.understand }}</span>
       </div>
@@ -65,7 +67,6 @@
         v-show="poem.status.understand"
         class="poem-stamp poem-recite-stamp"
         :class="{'stamp-off': !poem.status.recite, 'animated pulse': poem.status.recite}"
-        :title="$str.recite + $str.poem"
         @click="recitePoem">
         <span>{{ stampText($str.ed + $str.recite) }}</span>
       </div>
@@ -73,7 +74,6 @@
         v-show="poem.status.recite"
         class="poem-stamp poem-favorite-stamp"
         :class="{'stamp-off': !poem.status.favorite, 'animated pulse': poem.status.favorite}"
-        :title="$str.favorite + $str.poem"
         @click="favoritePoem">
         <span>{{ $str.favorite }}</span>
       </div>
@@ -291,6 +291,9 @@ export default {
     },
     chooseImage () {
       this.$bus.emit('chooseImage', this.id)
+    },
+    recordPoem () {
+      this.$bus.emit('recordPoem', this.id)
     }
   }
 }
@@ -303,23 +306,24 @@ export default {
   height: calc(100% - @page-pad * 2);
   margin: @page-pad;
   z-index: 9;
-  span {
-    display: block;
-  }
   .poem-header {
     position: relative;
     display: flex;
+    height: 100%;
     flex-direction: row-reverse;
     align-self: flex-start;
     .poem-title {
       .title {
         .v-title(20px);
       }
+      .title-long {
+        height: 350px;
+      }
       .edit-btn {
         position: absolute;
         .image-btn();
-        right: -54px;
-        top: 0px;
+        right: -56px;
+        top: -8px;
       }
     }
     .poem-author {
@@ -328,6 +332,14 @@ export default {
       color: @text-vice;
       .name {
         .v-text(16px);
+      }
+    }
+    .poem-reads {
+      position: absolute;
+      bottom: 100px;
+      right: -24px;
+      .record-btn {
+        .image-btn();
       }
     }
   }
@@ -384,11 +396,12 @@ export default {
       position: relative;
       width: calc(100% - 80px);
       left: 80px;
-      margin-bottom: 40px;
+      margin-bottom: 16px;
       text-align: center;
       flex-direction: row;
       .hover-fade();
       .flex-center();
+      .flash-btn();
     }
     .right-btn {
       right: 0px;

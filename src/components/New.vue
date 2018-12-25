@@ -104,7 +104,7 @@ export default {
           })
         } else {
           addPoem({'poem': this.poem}).then(res => {
-            this.$bus.emit('addPoem')
+            //this.$bus.emit('poemAdded')
           })
         }
       }

@@ -21,6 +21,7 @@
     "less-loader": "^4.1.0",
     "mongoose": "^5.4.0",
     "qs": "^6.6.0",
+    "recorder-js": "^1.0.7",
     "signature_pad": "^3.0.0-beta.3",
     "vue": "^2.5.2",
     "vue-bus": "^1.2.0",

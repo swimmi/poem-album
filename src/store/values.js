@@ -7,7 +7,7 @@ var strings = {
   poem: '诗词',
   poem_category: '体裁',
   poem_cipai: '词牌',
-  poem_cipai_tip: '有词牌可不填',
+  poem_cipai_tip: '若词可空',
   poem_type: '类型',
   poem_title: '标题',
   poem_prologue: '序跋',
@@ -25,10 +25,13 @@ var strings = {
   next: '前进',
   submit: '提交',
   no_content: '暂无内容',
-  select_image_tip: '请选择图片文件',
   understand: '理解',
   recite: '背诵',
   favorite: '收藏',
-  ed: '业已'
+  ed: '业已',
+  choose_image: '拣择图景',
+  record_read: '听取朗声',
+  start: '开始',
+  end: '结束'
 }
 module.exports = { strings }

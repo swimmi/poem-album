@@ -13,11 +13,11 @@
         <div class="page">
           <Catalog></Catalog>
         </div>
-        <div class="page">
-          <Catalog></Catalog>
-        </div>
         <div class="page" v-for="(item, index) in poems">
-          <Poem :id="item._id"></Poem>
+          <Poem :id="item._id" :page="index + 4" :odd="index % 2 == 0"></Poem>
+        </div>
+        <div class="page">
+          <Back></Back>
         </div>
       </div>
       <div class="pad" v-show="writable">
@@ -31,6 +31,7 @@
             </div>
           </transition>
           <div class="cropper-btn btn-group">
+            <span class="image-btn" @click="selectFile"><img src="~@/assets/images/image.png"/></span>
             <span class="image-btn" @click="cropper.show = false"><img src="~@/assets/images/close.png"/></span>
             <span class="image-btn" @click="uploadImage"><img src="~@/assets/images/ok.png"/></span>
           </div>
@@ -38,21 +39,22 @@
     </div>
   </div>
 </template>
-
 <script>
 import 'cropperjs/dist/cropper.css'
 import Cropper from 'cropperjs'
 import SignaturePad from 'signature_pad'
 import turn from 'st/js/turn.min'
 import Cover from '@/components/Cover'
+import Back from '@/components/Back'
 import Poem from '@/components/Poem'
 import New from '@/components/New'
 import Catalog from '@/components/Catalog'
-import { getAllPoems, updateAnyPoem } from '@/api/poem'
+import { getAllPoems, updateAnyPoem, getLastPoem } from '@/api/poem'
 export default {
   name: 'Index',
   components: {
     Cover,
+    Back,
     Poem,
     New,
     Catalog
@@ -64,6 +66,7 @@ export default {
       h: 0,
       poems: [],
       poemId: '',
+      poemPage: 0,
       // 图片裁剪
       cropper: {
         self: null,
@@ -75,14 +78,12 @@ export default {
     }
   },
   mounted() {
+    this.$bus.on('addPoem', this.addPoem)
     this.$bus.on('editPoem', this.editPoem)
     this.$bus.on('openAlbum', this.openAlbum)
-    this.$bus.on('loadPoems', this.loadPoems)
-    this.$bus.on('changeImage', this.chooseImage)
+    this.$bus.on('poemEdited', this.poemEdited)
+    this.$bus.on('chooseImage', this.chooseImage)
     this.init()
-    window.onresize = () => {
-      this.init()
-    }
   },
   updated () {
     if (!this.inited) {
@@ -100,12 +101,26 @@ export default {
     loadPoems () {
       getAllPoems({}).then(res => {
         this.poems = res
+        if(this.inited) {
+          this.initTurn()
+        }
         this.loading = false
       })
     },
-    editPoem (id) {
+    addPoem () {
+      this.loadPoems()
+    },
+    editPoem (id, page) {
+      this.poemPage = page
       this.$bus.emit('loadPoem', id)
+      // 跳到添加页
       $('#album').turn('page', 2)
+    },
+    // 编辑后处理
+    poemEdited (id) {
+      // 转回页面
+      $('#album').turn('page', this.poemPage)
+      this.$bus.emit('refreshPoem', id)
     },
     openAlbum (page) {
       setTimeout(() => {
@@ -113,17 +128,17 @@ export default {
       }, 1000)
     },
     initTurn () {
-      this.$nextTick(() => {
-        $('#album').turn({
-          width: this.w,
-          height: this.h,
-          direction: 'rtl',
-          elevation: 50,
-          gradients: true,
-          autoCenter: true
-        })
+      $('#album').turn({
+        width: this.w,
+        height: this.h,
+        direction: 'rtl',
+        elevation: 50,
+        gradients: true,
+        autoCenter: true
       })
+      $('#album').turn("options", {turnCorners: "bl,br"});
     },
+    // 初始化手写板
     initWritePad () {
       var canvas = document.getElementById('writePad')
       var signaturePad = new SignaturePad(canvas)
@@ -133,7 +148,7 @@ export default {
     initCropper () {
       this.$nextTick(() => {
         this.cropper.self = new Cropper(this.$refs.cropperImage, {
-          aspectRatio: 2 / 3,
+          aspectRatio: 3 / 2,
           viewMode: 1
         })
       })
@@ -143,9 +158,12 @@ export default {
       if (this.poemId == id && this.cropper.url != '') {
         this.cropper.show = true
       } else {
-        this.$refs.imageFile.click()
+        this.selectFile()
       }
       this.poemId = id
+    },
+    selectFile () {
+      this.$refs.imageFile.click()
     },
     // 处理选择图片
     changeImage (e) {
@@ -156,16 +174,17 @@ export default {
       this.cropper.show = true
     },
     uploadImage () {
-      console.log(this.cropper.self)
+      const name = `${this.poemId}.png`
       this.cropper.self.getCroppedCanvas().toBlob((blob) => {
         var form = new FormData()
-        const name = `${this.poemId}.png`
         form.append('type', 'images')
-        form.append('id', this.id)
         form.append('file', blob, name)
-        this.$util.uploadForm(form)
-        updateAnyPoem({'id': poemId, 'image': name}).then(res => {
-          console.log(res)
+        this.$http.post('/api/upload', form)
+        const any = {
+          'image': name
+        }
+        updateAnyPoem({'id': this.poemId, 'any': any}).then(res => {
+          this.$bus.emit('refreshPoem', this.poemId)
         })
       })
       this.cropper.show = false

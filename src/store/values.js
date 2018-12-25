@@ -4,6 +4,7 @@ var strings = {
   search: '搜索',
   shi: '诗',
   ci: '词',
+  poem: '诗词',
   poem_category: '体裁',
   poem_cipai: '词牌',
   poem_cipai_tip: '有词牌可不填',
@@ -24,7 +25,10 @@ var strings = {
   next: '前进',
   submit: '提交',
   no_content: '暂无内容',
-  favorite_success: '收藏成功',
   select_image_tip: '请选择图片文件',
+  understand: '理解',
+  recite: '背诵',
+  favorite: '收藏',
+  ed: '业已'
 }
 module.exports = { strings }

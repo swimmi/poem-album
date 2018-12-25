@@ -3,17 +3,19 @@
 @accent-color: #eee566ce;
 @border-color: #272222ef;
 @shadow-color: #a19c9cef;
+@stamp-color: #ff0000;
 
 @light-bg: #e1e3e4a2;
 @dark-bg: #272d33;
-@page-bg: #fafaf2;
+@page-bg: #fdfdfb;
 @modal-bg: #0f0f0fda;
 @white-bg: #f6fffdb4;
 
 @text-white: #f8f8f8;
-@text-black: #111;
+@text-black: #333;
 @text-red: #fd5930ec;
-@text-vice: #555;
+@text-vice: #666;
+@text-grey: #999;
 
 @toolbar-height: 64px;
 
@@ -128,6 +130,9 @@
   left: 0px;
   background: @modal-bg;
 }
+.invisible {
+  visibility: hidden;
+}
 
 .slide-in-left {
   animation: slideInLeft 1s 1 forwards;
@@ -179,6 +184,16 @@
   font-size: @size;
   line-height: @size * 1.5;
   letter-spacing: 1px;
+}
+
+.flash-text {
+  animation: flashText 3s infinite;
+  opacity: 1!important;
+  @keyframes flashText {
+    0% { color: @white-bg; }
+    50% { color: white; }
+    100% { color: @white-bg; }
+  }
 }
 
 .float-bg (@time) {

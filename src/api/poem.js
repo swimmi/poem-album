@@ -20,4 +20,6 @@ export const getPoem = async function (params) {
 export const getAllPoems = async function () {
   return (await api.get('/poem/all')).data
 }
-
+export const getLastPoem = async function () {
+  return (await api.get('/poem/last')).data
+}

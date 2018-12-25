@@ -69,17 +69,16 @@ var getObjectURL = function (file) {
   return url
 }
 
-var uploadForm = function (form) {
-  const config = {
-    headers: {'Content-Type': 'multipart/form-data'}
+var getFilePath = function (type, id) {
+  var uploadPath = 'http://localhost:8080/api/' + type + '/'
+  if (id) {
+    uploadPath += id + '/'
   }
-  this.$http.post('/api/upload', form, config).then(res => {
-    console.log(res)
-  })
+  return uploadPath
 }
 
 export default {
   functions: {
-    parseNumber, parseColumn, splitToSentences, getTimeStr, getObjectURL, uploadForm
+    parseNumber, parseColumn, splitToSentences, getTimeStr, getObjectURL, getFilePath
   }
 }

@@ -76,7 +76,6 @@ export default {
   mounted () {
     this.$bus.on('loadPoem', this.loadPoem)
     this.$bus.on('submitPoem', this.submit)
-    console.log(this.id)
     this.loading = false
   },
   methods: {
@@ -98,13 +97,14 @@ export default {
       if (this.poem.type == 0 || this.poem.title == '' || this.poem.author == '' || this.poem.content == '') {
         alert(this.$str.input_required)
       } else {
-        if (this.id == '') {
-          addPoem({'poem': this.poem}).then(res => {
-            this.$bus.emit('loadPoems')
+        const id = this.poem._id
+        if (id) {
+          updatePoem({'id': id, 'poem': this.poem}).then(res => {
+            this.$bus.emit('poemEdited', id)
           })
         } else {
-          updatePoem({'id': this.id, 'poem': this.poem}).then(res => {
-            this.$bus.emit('poemEdited', this.poem)
+          addPoem({'poem': this.poem}).then(res => {
+            this.$bus.emit('addPoem')
           })
         }
       }

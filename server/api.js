@@ -45,7 +45,10 @@ router.post('/poem/get', (req, res) => {
   models.Poem.findById(req.body.id, (err, data) => {res.send(err?err:data)})
 })
 router.get('/poem/all', (req, res) => {
-  models.Poem.find({}).select('_id title').exec((err, data) => {res.send(err?err:data)})
+  models.Poem.find({}).select('_id title').sort({'author': -1, 'author_desc': -1, 'type': 1, 'title': 1}).exec((err, data) => {res.send(err?err:data)})
+})
+router.get('/poem/last', (req, res) => {
+  models.Poem.findOne({}).select('_id title').sort({'createdAt': -1}).exec((err, data) => {res.send(err?err:data)})
 })
 router.post('/poem/search', (req, res) => {
   const key = req.body.keyword
@@ -60,11 +63,11 @@ router.post('/poem/search', (req, res) => {
     exec((err, data) => {res.send(err?err:data)})
 })
 // 获取服务器文件
-router.get('/:type/:id/:name', function(req, res) {
+router.get('/:type/:id?/:name', function(req, res) {
   var type = req.params.type
   var id = req.params.id
   var options = {
-    root: __dirname + `/uploads/${type}/${id}/`,
+    root: __dirname + `/uploads/${type}/` + (id ? `${id}/` : ''),
     dotfiles: 'deny',
     headers: {
         'x-timestamp': Date.now(),
@@ -85,13 +88,17 @@ router.post('/upload/', function(req, res) {
   }
   const type = req.body.type
   const id = req.body.id
+  var dir = `${type}`
+  if (id) {
+    dir += `/${id}`
+  }
   let files = req.files.file
   if (Array.isArray(files)) {
     files.forEach(file => {
-      file.mv(`uploads/${type}/${id}/` + file.name)
+      file.mv(`uploads/${dir}/` + file.name)
     })
   } else {
-    files.mv(`uploads/${type}/${id}/` + files.name)
+    files.mv(`uploads/${dir}/` + files.name)
   }
   res.send('File uploaded!')
 })

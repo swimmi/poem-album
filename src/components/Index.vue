@@ -29,7 +29,6 @@
         <span class="image-btn" @click="uploadRecords"><img src="~@/assets/images/ok.png"/></span>
       </div>
     </div>
-    <audio src="" loop autoplay preload="true"/>
     <div v-if="loading"></div>
     <div v-else class="content" :style="{width: w + 'px', height: h + 'px'}">
       <div class="album" id="album">
@@ -52,6 +51,10 @@
       <div class="pad" v-show="writable">
         <canvas id="writePad" :width="w" :height="h"></canvas>
       </div>
+      <div class="player">
+        <audio id="audio" src="static/erke.mp3"></audio>
+        <canvas id="canvas" :width="210" :height="player.height"></canvas>
+      </div>
     </div>
   </div>
 </template>
@@ -65,6 +68,7 @@ import Back from '@/components/Back'
 import Poem from '@/components/Poem'
 import New from '@/components/New'
 import Recorder from '@/components/Recorder'
+import Player from '@/components/Player'
 import Catalog from '@/components/Catalog'
 import { getAllPoems, updateAnyPoem, getLastPoem } from '@/api/poem'
 export default {
@@ -75,11 +79,11 @@ export default {
     Poem,
     New,
     Catalog,
-    Recorder
+    Recorder,
+    Player
   },
   data () {
     return {
-      inited: false,
       w: 0,
       h: 0,
       poems: [],
@@ -93,6 +97,13 @@ export default {
       },
       recorder: {
         show: false
+      },
+      player: {
+        height: 600,
+        analyser: null,
+        ctx: null,
+        gradient: null,
+        capYPositionArray: []
       },
       writable: false,
       loading: true
@@ -109,11 +120,14 @@ export default {
     this.init()
   },
   updated () {
-    if (!this.inited) {
+    this.$nextTick(() => {
       this.initCropper()
       this.initTurn()
-      this.inited = true
-    }
+      this.initPlayer()
+    })
+  },
+  unbind () {
+
   },
   methods: {
     init () {
@@ -184,12 +198,62 @@ export default {
     },
     // 初始化Cropper
     initCropper () {
-      this.$nextTick(() => {
-        this.cropper.self = new Cropper(this.$refs.cropperImage, {
-          aspectRatio: 3 / 2,
-          viewMode: 1
-        })
+      this.cropper.self = new Cropper(this.$refs.cropperImage, {
+        aspectRatio: 3 / 2,
+        viewMode: 1
       })
+    },
+    /**
+     * 播放器可视化相关
+     */
+    initPlayer () {
+      this.player.ctx = new AudioContext()
+      this.player.analyser = this.player.ctx.createAnalyser()
+      this.player.analyser.connect(this.player.ctx.destination)
+      this.player.capYPositionArray = []
+
+      var audio = document.getElementById('audio')
+      var audioSrc = this.player.ctx.createMediaElementSource(audio)
+      audioSrc.connect(this.player.analyser)
+
+      var canvas = document.getElementById('canvas')
+      this.player.ctx = canvas.getContext('2d')
+      this.player.gradient = this.player.ctx.createLinearGradient(0, 0, 0, this.player.height)
+      this.player.gradient.addColorStop(1, '#00ff00cc')
+      this.player.gradient.addColorStop(0.5, '#ffff00cc')
+      this.player.gradient.addColorStop(0, '#ff0000cc')
+      this.renderFrame()
+      audio.play()
+    },
+    renderFrame() {
+      var cwidth = canvas.width - 2,
+          cheight = canvas.height,
+          meterHeight = 8,
+          meterGap = 10,
+          capWidth = 2,
+          capStyle = '#ffffffcc',
+          meterNum = this.player.height / meterGap
+      var array = new Uint8Array(this.player.analyser.frequencyBinCount)
+      this.player.analyser.getByteFrequencyData(array)
+      var step = Math.round(array.length / meterNum)
+      this.player.ctx.clearRect(0, 0, canvas.width, cheight)
+      for (var i = 0; i < meterNum; i++) {
+          var value = array[i * step]
+          if (this.player.capYPositionArray.length < Math.round(meterNum)) {
+              this.player.capYPositionArray.push(value)
+          }
+          this.player.ctx.fillStyle = this.player.gradient
+          this.player.ctx.fillRect(0, (meterNum - i) * meterGap, value + capWidth, meterHeight)
+          this.player.ctx.fillStyle = capStyle
+          if (value < this.player.capYPositionArray[i]) {
+              this.player.ctx.fillRect(this.player.capYPositionArray[i], (meterNum - i) * meterGap, capWidth, meterHeight)
+              this.player.capYPositionArray[i] --
+          } else {
+              this.player.ctx.fillRect(value, (meterNum - i) * meterGap, capWidth, meterHeight)
+              this.player.capYPositionArray[i] = value
+          }
+      }
+      requestAnimationFrame(this.renderFrame)
     },
     // 打开文件选择
     chooseImage (id) {
@@ -264,6 +328,14 @@ export default {
     .pad {
       .center-parent();
       z-index: 9;
+    }
+    .player {
+      position: absolute;
+      height: auto;
+      width: 210px;
+      bottom: 48px;
+      left: 48px;
+      z-index: 8;
     }
   }
   .cropper {

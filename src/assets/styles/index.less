@@ -1,5 +1,5 @@
 @primary-color: #6e7bb3e5;
-@vice-color: #7da8a3e0;
+@vice-color: #85B0A6;
 @accent-color: #eee566ce;
 @border-color: #272222ef;
 @shadow-color: #868686e1;
@@ -13,12 +13,12 @@
 
 @text-white: #f8f8f8;
 @text-black: #333;
-@text-red: #fd5930ec;
+@text-red: #ff6b6b;
 @text-vice: #666;
-@text-grey: #999;
+@text-gray: #999;
 
 @toolbar-height: 64px;
-
+@footer-width: 210px;
 @base-radius: 5px;
 @page-pad: 48px;
 
@@ -73,7 +73,7 @@ span {
   .hover-fade();
   cursor: pointer;
   img {
-    width: 20px;
+    width: 24px;
     height: auto;
   }
   &:hover {
@@ -133,6 +133,10 @@ span {
   &:hover {
     box-shadow: @shadow-color 2px 2px 20px;
   }
+}
+
+.gray-filter {
+  filter: grayscale(80%);
 }
 
 .modal {

@@ -32,6 +32,9 @@ var strings = {
   choose_image: '拣择图景',
   record_read: '听取朗声',
   start: '开始',
-  end: '结束'
+  end: '结束',
+  back: '返回',
+  recording: '录音中',
+  please_read: '请朗读'
 }
 module.exports = { strings }

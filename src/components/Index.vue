@@ -15,7 +15,7 @@
       </transition>
       <div class="modal-btn btn-group">
         <span class="modal-title">{{ $str.choose_image }}</span>
-        <span class="image-btn" @click="selectFile"><img src="~@/assets/images/image.png"/></span>
+        <span class="image-btn" @click="selectImage"><img src="~@/assets/images/image.png"/></span>
         <span class="image-btn" @click="cropper.show = false"><img src="~@/assets/images/close.png"/></span>
         <span class="image-btn" @click="uploadImage"><img src="~@/assets/images/ok.png"/></span>
       </div>
@@ -24,13 +24,14 @@
       <div class="modal-wrapper recorder"><Recorder></Recorder></div>
       <div class="modal-btn btn-group">
         <span class="modal-title">{{ $str.record_read }}</span>
-        <span class="image-btn" @click="playRecords"><img src="~@/assets/images/remove.png"/></span>
+        <span class="image-btn" @click="emptyRecords"><img src="~@/assets/images/remove.png"/></span>
         <span class="image-btn" @click="recorder.show = false"><img src="~@/assets/images/close.png"/></span>
         <span class="image-btn" @click="uploadRecords"><img src="~@/assets/images/ok.png"/></span>
       </div>
     </div>
     <div v-if="loading"></div>
     <div v-else class="content" :style="{width: w + 'px', height: h + 'px'}">
+      <audio id="readerAudio" ref="readerAudio" hidden />
       <div class="album" id="album">
         <div class="page">
           <Cover></Cover>
@@ -48,12 +49,12 @@
           <Back></Back>
         </div>
       </div>
-      <div class="pad" v-show="writable">
+      <div class="pad" v-if="writepad.show">
         <canvas id="writePad" :width="w" :height="h"></canvas>
       </div>
-      <div class="player">
-        <audio id="audio" src="static/erke.mp3"></audio>
-        <canvas id="canvas" :width="210" :height="player.height"></canvas>
+      <div class="music" :class="{'music-right': poemOdd}">
+        <input type="file" id="musicFile" ref="musicFile" hidden accept="audio/*" @change="changeMusic" />
+        <Player v-show="player.show"></Player>
       </div>
     </div>
   </div>
@@ -84,11 +85,13 @@ export default {
   },
   data () {
     return {
+      inited: false,
       w: 0,
       h: 0,
       poems: [],
       poemId: '',
       poemPage: 0,
+      poemOdd: false,     // 左页或者右页，影响部分布局
       // 图片裁剪
       cropper: {
         self: null,
@@ -99,35 +102,43 @@ export default {
         show: false
       },
       player: {
-        height: 600,
-        analyser: null,
-        ctx: null,
-        gradient: null,
-        capYPositionArray: []
+        name: '',
+        show: false
       },
-      writable: false,
+      reader: {
+        playing: false,
+        list: [],
+        index: -1
+      },
+      writepad: {
+        show: false
+      },
       loading: true
     }
   },
   mounted() {
+    this.$bus.on('turnPage', this.turnPage)
     this.$bus.on('editPoem', this.editPoem)
     this.$bus.on('openAlbum', this.openAlbum)
     this.$bus.on('poemAdded', this.poemAdded)
     this.$bus.on('poemEdited', this.poemEdited)
     this.$bus.on('recordPoem', this.recordPoem)
     this.$bus.on('chooseImage', this.chooseImage)
+    this.$bus.on('loadReads', this.loadReads)
+    this.$bus.on('playMusic', this.playMusic)
+    this.$bus.on('pauseMusic', this.pauseMusic)
+    this.$bus.on('chooseMusic', this.chooseMusic)
     this.$bus.on('poemRecorded', this.poemRecorded)
     this.init()
   },
   updated () {
-    this.$nextTick(() => {
-      this.initCropper()
-      this.initTurn()
-      this.initPlayer()
-    })
-  },
-  unbind () {
-
+    if (!this.inited) {
+      this.$nextTick(() => {
+        this.initCropper()
+        this.initTurn()
+      })
+      this.inited = true
+    }
   },
   methods: {
     init () {
@@ -164,7 +175,7 @@ export default {
     },
     editPoem (id, page) {
       this.poemPage = page
-      this.$bus.emit('loadPoem', id)
+      this.$bus.emit('loadPoem', id, page)
       // 跳到添加页
       this.turnPage(2)
     },
@@ -188,6 +199,11 @@ export default {
         gradients: true,
         autoCenter: true
       })
+      $('#album').bind("turning", (event, page, view) => {
+        if (this.player.show) {
+          this.$bus.emit('toggleMusic')
+        }
+      })
       $('#album').turn("options", {turnCorners: "bl,br"});
     },
     // 初始化手写板
@@ -204,67 +220,18 @@ export default {
       })
     },
     /**
-     * 播放器可视化相关
+     * Poem Image 相关
      */
-    initPlayer () {
-      this.player.ctx = new AudioContext()
-      this.player.analyser = this.player.ctx.createAnalyser()
-      this.player.analyser.connect(this.player.ctx.destination)
-      this.player.capYPositionArray = []
-
-      var audio = document.getElementById('audio')
-      var audioSrc = this.player.ctx.createMediaElementSource(audio)
-      audioSrc.connect(this.player.analyser)
-
-      var canvas = document.getElementById('canvas')
-      this.player.ctx = canvas.getContext('2d')
-      this.player.gradient = this.player.ctx.createLinearGradient(0, 0, 0, this.player.height)
-      this.player.gradient.addColorStop(1, '#00ff00cc')
-      this.player.gradient.addColorStop(0.5, '#ffff00cc')
-      this.player.gradient.addColorStop(0, '#ff0000cc')
-      this.renderFrame()
-      audio.play()
-    },
-    renderFrame() {
-      var cwidth = canvas.width - 2,
-          cheight = canvas.height,
-          meterHeight = 8,
-          meterGap = 10,
-          capWidth = 2,
-          capStyle = '#ffffffcc',
-          meterNum = this.player.height / meterGap
-      var array = new Uint8Array(this.player.analyser.frequencyBinCount)
-      this.player.analyser.getByteFrequencyData(array)
-      var step = Math.round(array.length / meterNum)
-      this.player.ctx.clearRect(0, 0, canvas.width, cheight)
-      for (var i = 0; i < meterNum; i++) {
-          var value = array[i * step]
-          if (this.player.capYPositionArray.length < Math.round(meterNum)) {
-              this.player.capYPositionArray.push(value)
-          }
-          this.player.ctx.fillStyle = this.player.gradient
-          this.player.ctx.fillRect(0, (meterNum - i) * meterGap, value + capWidth, meterHeight)
-          this.player.ctx.fillStyle = capStyle
-          if (value < this.player.capYPositionArray[i]) {
-              this.player.ctx.fillRect(this.player.capYPositionArray[i], (meterNum - i) * meterGap, capWidth, meterHeight)
-              this.player.capYPositionArray[i] --
-          } else {
-              this.player.ctx.fillRect(value, (meterNum - i) * meterGap, capWidth, meterHeight)
-              this.player.capYPositionArray[i] = value
-          }
-      }
-      requestAnimationFrame(this.renderFrame)
-    },
     // 打开文件选择
     chooseImage (id) {
       if (this.poemId == id && this.cropper.url != '') {
         this.cropper.show = true
       } else {
-        this.selectFile()
+        this.selectImage()
       }
       this.poemId = id
     },
-    selectFile () {
+    selectImage () {
       this.$refs.imageFile.click()
     },
     // 处理选择图片
@@ -291,7 +258,57 @@ export default {
       })
       this.cropper.show = false
     },
-    // 处理录制朗读
+    /**
+     * Poem Music 相关
+     */
+    // 打开文件选择
+    chooseMusic (id) {
+      this.selectMusic()
+      this.poemId = id
+    },
+    selectMusic () {
+      this.$refs.musicFile.click()
+    },
+    // 已选择文件
+    changeMusic (e) {
+      var files = e.target.files || e.dataTransfer.files
+      if (!files.length) return
+      this.uploadMusic(files[0])
+    },
+    // 上传文件
+    uploadMusic (file) {
+      const name = `${this.poemId}.mp3`
+      var form = new FormData()
+      form.append('type', 'musics')
+      form.append('file', file, name)
+      this.$http.post('/api/upload', form)
+      const any = {
+        'music': name
+      }
+      updateAnyPoem({'id': this.poemId, 'any': any}).then(res => {
+        this.$bus.emit('refreshPoem', this.poemId)
+      })
+    },
+    pauseMusic () {
+      if (this.player.show) {
+        this.$bus.emit('toggleMusic')
+        this.player.show = !this.player.show
+      }
+    },
+    playMusic (name, odd) {
+      this.poemOdd = odd
+      if (this.player.name == name) {
+        this.$bus.emit('toggleMusic')
+        this.player.show = !this.player.show
+      } else {
+        this.$bus.emit('startMusic', this.$util.getFilePath('musics', name))
+        this.player.show = true
+      }
+      this.player.name = name
+    },
+    /**
+     * 录制朗读 相关
+     */
     recordPoem (id) {
       this.recorder.show = true
       this.poemId = id
@@ -300,11 +317,43 @@ export default {
     playRecords () {
       this.$bus.emit('playRecords')
     },
+    emptyRecords () {
+      this.$bus.emit('emptyRecords')
+    },
     uploadRecords () {
       this.$bus.emit('uploadRecords')
     },
     poemRecorded () {
       this.recorder.show = false
+    },
+    /**
+     * 播放朗读 相关
+     */
+    loadReads (id, list) {
+      this.poemId = id
+      this.reader.list = list
+      this.playReads()
+    },
+    playRead (item) {
+      this.$refs.readerAudio.src = this.$util.getFilePath('reads', this.poemId) + item.name
+      this.$refs.readerAudio.play()
+      this.reader.playing = true
+      this.$refs.readerAudio.addEventListener('ended', this.stopReads);
+    },
+    stopReads () {
+      this.reader.playing = false
+    },
+    playReads () {
+      if (this.reader.index == -1) {
+        this.$refs.readerAudio.addEventListener('ended', this.playReads)
+      }
+      this.reader.index ++
+      if (this.reader.index < this.reader.list.length) {
+        this.playRead(this.reader.list[this.reader.index])
+      } else  {
+        this.reader.index = -1
+        this.$refs.readerAudio.removeEventListener('ended', this.playReads)
+      }
     }
   }
 }
@@ -320,6 +369,7 @@ export default {
   .content {
     position: relative;
     .album {
+      z-index: 2;
       cursor: pointer;
       .page {
         background: @page-bg;
@@ -327,15 +377,18 @@ export default {
     }
     .pad {
       .center-parent();
-      z-index: 9;
+      z-index: 3;
     }
-    .player {
+    .music {
       position: absolute;
-      height: auto;
-      width: 210px;
-      bottom: 48px;
-      left: 48px;
-      z-index: 8;
+      height: 320px;
+      width: auto;
+      bottom: @page-pad;
+      margin-left: calc(@page-pad + @footer-width + 4px);
+      z-index: 3;
+    }
+    .music-right {
+      left: 50%;
     }
   }
   .cropper {

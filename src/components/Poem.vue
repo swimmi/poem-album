@@ -11,7 +11,8 @@
         <span class="name">{{ poem.author }}</span>
       </div>
       <div class="poem-reads">
-        <span class="record-btn" @click="recordPoem"><img src="~@/assets/images/read.png" /></span>
+        <span v-if="poem.reads.length > 0" class="read-btn" @click="readPoem"><img src="~@/assets/images/read.png" /></span>
+        <span class="record-btn" @click="recordPoem"><img src="~@/assets/images/mic.png" /></span>
       </div>
     </div>
     <div class="poem-main">
@@ -49,7 +50,8 @@
         <span>{{ poem.author_desc }}</span>
       </div>
       <div class="poem-image" :style="{backgroundImage: 'url(' + poemImage + ')'}">
-        <span class="change-btn" @click="chooseImage"><img src="~@/assets/images/change_image.png" /></span>
+        <span class="music-btn" :class="{'gray-filter': poem.music}" @click="playMusic"><img src="~@/assets/images/music.png" /></span>
+        <span class="change-btn" :class="{'gray-filter': poem.image}" @click="chooseImage"><img src="~@/assets/images/image.png" /></span>
       </div>
     </div>
     <div class="poem-stamp-container" v-show="pageIndex == pages.length - 1">
@@ -289,11 +291,26 @@ export default {
         this.loadPoem()
       }
     },
+    playMusic () {
+      if (this.poem.music) {
+        this.$bus.emit('playMusic', this.poem.music, this.odd)
+      } else {
+        this.$bus.emit('chooseMusic', this.id)
+      }
+    },
     chooseImage () {
       this.$bus.emit('chooseImage', this.id)
     },
+    readPoem () {
+      if (this.poem.reads && this.poem.reads.length > 0) {
+        this.$bus.emit('loadReads', this.id, this.poem.reads)
+      } else {
+        this.recordPoem()
+      }
+    },
     recordPoem () {
       this.$bus.emit('recordPoem', this.id)
+      this.$bus.emit('pauseMusic')
     }
   }
 }
@@ -322,8 +339,8 @@ export default {
       .edit-btn {
         position: absolute;
         .image-btn();
-        right: -56px;
-        top: -8px;
+        right: -52px;
+        top: 45px;
       }
     }
     .poem-author {
@@ -336,8 +353,12 @@ export default {
     }
     .poem-reads {
       position: absolute;
-      bottom: 100px;
-      right: -24px;
+      bottom: 330px;
+      right: -52px;
+      display: flex;
+      .read-btn {
+        .image-btn();
+      }
       .record-btn {
         .image-btn();
       }
@@ -396,7 +417,6 @@ export default {
       position: relative;
       width: calc(100% - 80px);
       left: 80px;
-      margin-bottom: 16px;
       text-align: center;
       flex-direction: row;
       .hover-fade();
@@ -418,7 +438,7 @@ export default {
   .poem-footer {
     display: flex;
     flex-direction: column;
-    width: 210px;
+    width: @footer-width;
     .poem-desc {
       .h-text(14px);
       text-indent: 2em;
@@ -426,7 +446,7 @@ export default {
     }
     .poem-author-desc {
       .h-text(12px);
-      color: @text-grey;
+      color: @text-gray;
       text-indent: 2em;
       margin-bottom: 32px;
     }
@@ -437,6 +457,12 @@ export default {
       border: 1px solid @white-bg;
       border-radius: @base-radius;
       .float-bg(60s);
+      .music-btn {
+        .image-btn();
+        position: absolute;
+        bottom: 64px;
+        right: 0px;
+      }
       .change-btn {
         .image-btn();
         position: absolute;
@@ -506,8 +532,8 @@ export default {
       }
     }
     .stamp-off {
-      filter: grayscale(80%);
       opacity: .5;
+      .gray-filter();
       .hover-fade();
     }
   }

@@ -20,7 +20,12 @@ const poemSchema = Schema({
   annotation: String,                         // 注解
   image: String,
   music: String,
-  reads: [],
+  reads: [
+    {
+      name: String,
+      duration: Number
+    }
+  ],
   writes: [],
   notes: [],                                  // 笔记
   locked: { type: Boolean, default: false },  // 是否锁定

@@ -1,6 +1,11 @@
 <template>
   <div v-if="loading"></div>
   <div v-else class="recorder">
+    <div v-if="isRecording" class="recording">
+      <span>{{ $str.recording }}</span>
+      <img src="~@/assets/images/recording.gif" />
+      <span>{{ $str.please_read }}</span>
+    </div>
     <div class="column-container">
       <span class="column prev-column">{{ textColumns[cIndex - 1] || $str.start }}</span>
       <marquee v-if="textColumns[cIndex] && textColumns[cIndex].length >= 20" class="column column-long current-column" scrollamount="10" direction="up">{{ textColumns[cIndex] }}</marquee>
@@ -10,12 +15,16 @@
     <div class="record-container">
       <audio src="" hidden ref="audio" />
       <div class="record-scroll" ref="recordScroll">
+        <div v-show="reads.length == 0" class="record-tip">
+          <span>{{ $str.please_read }}</span>
+        </div>
         <div v-for="(item, index) in reads"
           :key="index"
           class="record-item animated fadeInDown"
           :class="{'playing': index == playIndex}"
           @click="playRecord(item)">
           <span class="record-text">{{ item.text }}</span>
+          <span class="record-duration">{{ $util.secondToStr(item.duration) }}s</span>
           <span class="record-action">
             <span class="image-btn" @click.stop="modifyRecord(index)"><img src="~@/assets/images/record.png"/></span>
           </span>
@@ -32,10 +41,10 @@
       </div>
       <div class="record-btn" v-else>
         <div v-if="!isPlaying" class="record-bg" @click="playRecords">
-          <img src="~@/assets/images/listen.png" />
+          <img src="~@/assets/images/play.png" />
         </div>
         <div v-else class="record-bg" @click="pauseRecords">
-          <img src="~@/assets/images/listen-off.png" />
+          <img src="~@/assets/images/pause.png" />
         </div>
       </div>
       <div class="cancel-btn" v-show="isRecording" @click="cancelRecord">
@@ -61,6 +70,7 @@ export default {
       recorder: null,
       isRecording: false,
       isPlaying: false,
+      isPaused: false,
       recordFile: '',
       media: null,
       loading: true
@@ -69,6 +79,7 @@ export default {
   mounted () {
     this.$bus.on('loadRecorder', this.loadRecorder)
     this.$bus.on('playRecords', this.playRecords)
+    this.$bus.on('emptyRecords', this.emptyRecords)
     this.$bus.on('uploadRecords', this.submit)
   },
   methods: {
@@ -91,6 +102,7 @@ export default {
         if (res.prologue) {
           this.content = res.prologue + this.content
         }
+        this.content = this.content.replace(/#/g, '')
         this.textColumns = this.$util.splitToSentences(this.content).map(item => {
           return this.$util.parseColumn(item)
         })
@@ -99,7 +111,8 @@ export default {
           res.reads.forEach((item, index) => {
             this.reads.push({
               text: this.textColumns[index],
-              name: item
+              name: item.name,
+              duration: item.duration
             })
           })
           this.cIndex = res.reads.length
@@ -115,19 +128,27 @@ export default {
       if (this.isRecording) {
         this.recorder.stop().then(({blob, buffer}) => {
           this.isRecording = false
-          const item = {
-            text: this.textColumns[this.cIndex],
-            file: blob
-          }
-          this.reads.splice(this.cIndex, 1, item)
-          if (this.reads.length == this.textColumns.length) {
-            this.cIndex = this.textColumns.length
-          } else {
-            this.cIndex ++
-          }
-          setTimeout(() => {
-            this.$refs.recordScroll.scrollTop = this.$refs.recordScroll.scrollHeight
-          }, 100)
+          // 获取音频时长
+          var duration = 0
+          const url = this.$util.getObjectURL(blob)
+          var audioElement = new Audio(url)
+          audioElement.addEventListener("loadedmetadata", (event) => {
+            duration = audioElement.duration.toFixed(2)
+            const item = {
+              text: this.textColumns[this.cIndex],
+              file: blob,
+              duration: duration
+            }
+            this.reads.splice(this.cIndex, 1, item)
+            if (this.reads.length == this.textColumns.length) {
+              this.cIndex = this.textColumns.length
+            } else {
+              this.cIndex ++
+            }
+            setTimeout(() => {
+              this.$refs.recordScroll.scrollTop = this.$refs.recordScroll.scrollHeight
+            }, 100)
+          })
         })
       }
     },
@@ -152,20 +173,30 @@ export default {
       this.isPlaying = false
     },
     playRecords () {
-      if (this.playIndex == -1) {
-        this.$refs.audio.addEventListener('ended', this.playRecords)
-      }
-      this.playIndex ++
-      if (this.playIndex < this.reads.length) {
-        this.playRecord(this.reads[this.playIndex])
-      } else  {
-        this.playIndex = -1
-        this.$refs.audio.removeEventListener('ended', this.playRecords)
+      if (this.isPaused) {
+        this.resumeRecords()
+      } else {
+        if (this.playIndex == -1) {
+          this.$refs.audio.addEventListener('ended', this.playRecords)
+        }
+        this.playIndex ++
+        if (this.playIndex < this.reads.length) {
+          this.playRecord(this.reads[this.playIndex])
+        } else  {
+          this.playIndex = -1
+          this.$refs.audio.removeEventListener('ended', this.playRecords)
+        }
       }
     },
     pauseRecords () {
+      this.isPaused = true
       this.isPlaying = false
       this.$refs.audio.pause()
+    },
+    resumeRecords () {
+      this.$refs.audio.play()
+      this.isPaused = false
+      this.isPlaying = true
     },
     emptyRecords () {
       this.isPlaying = false
@@ -183,13 +214,15 @@ export default {
       form.append('id', this.id)
       var recordList = []
       this.reads.forEach((item, index) => {
+        var name = item.name
         if (item.hasOwnProperty('file')) {
-          const name = `${index}.wav`
+          name = `${index}.wav`
           form.append('file', item.file, name)
-          recordList.push(name)
-        } else {
-          recordList.push(item.name)
         }
+        recordList.push({
+          name: name,
+          duration: item.duration
+        })
       })
       // 上传音频
       if (recordList.length > 0) {
@@ -200,7 +233,6 @@ export default {
         'reads': recordList
       }
       updateAnyPoem({'id': this.id, 'any': any}).then(res => {
-        console.log(res)
         this.$bus.emit('poemRecorded')
         this.$bus.emit('refreshPoem', this.id)
       })
@@ -221,6 +253,7 @@ export default {
     height: 100%;
     width: 200px;
     background: fade(@white-bg, 70%);
+    z-index: 3;
     .flex-center();
     .column {
       .v-text(20px);
@@ -239,22 +272,41 @@ export default {
       .v-text(24px);
     }
     .prev-column {
-      color: @text-grey
+      color: @text-gray
+    }
+  }
+  .recording {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: @vice-color;
+    z-index: 2;
+    .flex-center();
+    flex-direction: column;
+    span {
+      color: @text-white;
+      .h-text(18px);
     }
   }
   .record-container {
     flex: 1;
     overflow: hidden;
+    z-index: 1;
     .record-scroll {
       @pad: 32px;
       width: calc(100% - @pad);
       height: calc(100% - @pad);
       overflow-y: auto;
-      padding: @pad/2 @pad;
+      padding: @pad/2;
+      .record-tip {
+        .center-parent();
+        color: @text-red;
+        .h-text(20px);
+      }
       .record-item {
         display: flex;
-        width: calc(100% - @pad / 2);
-        margin: @pad / 2 0px;
+        width: 100%;
+        margin-bottom: @pad / 2;
         background: @white-bg;
         cursor: pointer;
         border-radius: @base-radius;
@@ -265,7 +317,14 @@ export default {
           justify-content: flex-start;
           padding: @pad / 2;
         }
+        .record-duration {
+          .flex-center();
+          margin-top: 2px;
+          .h-text(14px);
+          color: @text-gray;
+        }
         .record-action {
+          flex-direction: column;
           .flex-center();
         }
         &:hover {
@@ -283,13 +342,12 @@ export default {
     width: 200px;
     height: 100%;
     background: fade(@white-bg, 30%);
+    z-index: 3;
+    @size: 60px;
     .record-btn {
       .center-parent();
-      @size: 60px;
       width: @size;
       height: @size;
-      bottom: @size;
-      z-index: 99;
       cursor: pointer;
       .record-bg {
         .flex-center();
@@ -302,6 +360,10 @@ export default {
       .record-bg-stop {
         background-color: @text-white;
       }
+    }
+    .cancel-btn {
+      .center-parent();
+      margin-top: @size;
     }
   }
 }

@@ -2,7 +2,8 @@
   <div v-if="loading"></div>
   <div v-else class="new-poem">
     <div class="header">
-      <span class="btn title">{{ $str.new }}</span>
+      <span v-if="poem._id" class="btn title back" @click="back">{{ $str.back }}</span>
+      <span v-else class="btn title">{{ $str.new }}</span>
       <span class="btn submit" @click="submit">{{ $str.submit }}</span>
     </div>
     <div class="input-container">
@@ -68,6 +69,7 @@ export default {
         desc: '',
         annotation: '',
       },
+      poemPage: 0,
       types: data.type,
       periods: data.period,
       loading: true
@@ -86,12 +88,18 @@ export default {
     inputCiPai () {
       this.poem.title = this.poem.type
     },
-    loadPoem (id) {
+    loadPoem (id, page) {
+      this.poemPage = page
       this.loading = true
       getPoem({'id': id}).then(res => {
         this.poem = res
         this.loading = false
       })
+    },
+    back () {
+      if (this.poemPage > 0) {
+        this.$bus.emit('turnPage', this.poemPage)
+      }
     },
     submit () {
       if (this.poem.type == 0 || this.poem.title == '' || this.poem.author == '' || this.poem.content == '') {
@@ -149,6 +157,11 @@ export default {
     .title {
       flex: 1;
       margin-left: 48px;
+    }
+    .back {
+      &:hover {
+        color: @primary-color;
+      }
     }
     .submit {
       &:hover {

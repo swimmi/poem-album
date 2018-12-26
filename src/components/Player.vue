@@ -1,72 +1,109 @@
 <template>
-  <div class="player">
-    <audio id="audio" src="static/erke.mp3"></audio>
-    <canvas id="canvas" :width="400" :height="400"></canvas>
+  <div class="player" ref="player">
+    <audio id="audio" :src="player.src" preload loop></audio>
+    <canvas id="canvas" :width="player.width" :height="player.height"></canvas>
   </div>
 </template>
 <script>
 export default {
   data () {
     return {
-      analyser: null,
-      ctx: null,
-      gradient: null
+      player: {
+        playing: false,
+        audio: null,
+        src: '',
+        width: 400,
+        height: 320,
+        analyser: null,
+        ctx: null,
+        gradient: null,
+        capYPositionArray: []
+      },
+    }
+  },
+  updated () {
+    if (this.player.audio) {
+      this.player.audio.play()
+      this.player.ctx.clearRect(0, 0, canvas.width, canvas.height)
+      this.player.playing = true
     }
   },
   mounted () {
-    this.$bus.on('initPlayer', this.initPlayer)
+    this.$bus.on('startMusic', this.startMusic)
+    this.$bus.on('toggleMusic', this.toggleMusic)
   },
   methods: {
     initPlayer () {
-      var audio = document.getElementById('audio')
-      this.ctx = new AudioContext()
-      this.analyser = this.ctx.createAnalyser()
-      var audioSrc = this.ctx.createMediaElementSource(audio)
-      audioSrc.connect(this.analyser)
-      this.analyser.connect(this.ctx.destination)
-      // this.analyser.fftSize = 64
+      this.player.ctx = new AudioContext()
+      this.player.analyser = this.player.ctx.createAnalyser()
+      this.player.analyser.connect(this.player.ctx.destination)
+      this.player.capYPositionArray = []
+      this.player.audio = document.getElementById('audio')
+
+      var audioSrc = this.player.ctx.createMediaElementSource(audio)
+      audioSrc.connect(this.player.analyser)
 
       var canvas = document.getElementById('canvas')
-          
-      this.ctx = canvas.getContext('2d')
-      this.gradient = this.ctx.createLinearGradient(0, 0, 0, 300)
-      this.gradient.addColorStop(1, '#0f0')
-      this.gradient.addColorStop(0.5, '#ff0')
-      this.gradient.addColorStop(0, '#f00')
+      this.player.ctx = canvas.getContext('2d')
+      this.player.gradient = this.player.ctx.createLinearGradient(0, 0, 0, this.player.height)
+      this.player.gradient.addColorStop(1, '#00ff00cc')
+      this.player.gradient.addColorStop(0.5, '#ffff00cc')
+      this.player.gradient.addColorStop(0, '#ff0000cc')
       this.renderFrame()
-      audio.play()
+      this.player.audio.play()
+      this.player.playing = true
     },
     renderFrame() {
-      var cwidth = canvas.width,
-          cheight = canvas.height - 2,
-          meterWidth = 10, //width of the meters in the spectrum
-          gap = 2, //gap between meters
+      var cwidth = canvas.width - 2,
+          cheight = canvas.height,
+          meterWidth = 8,
+          meterGap = 10,
           capHeight = 2,
-          capStyle = '#fff',
-          meterNum = 800 / (10 + 2), //count of the meters
-          capYPositionArray = [] ////store the vertical position of hte caps for the preivous frame
-
-      var array = new Uint8Array(this.analyser.frequencyBinCount)
-      this.analyser.getByteFrequencyData(array)
-      var step = Math.round(array.length / meterNum) //sample limited data from the total array
-      this.ctx.clearRect(0, 0, cwidth, cheight)
+          capStyle = '#ffffffcc',
+          meterNum = this.player.width / meterGap
+      var array = new Uint8Array(this.player.analyser.frequencyBinCount)
+      this.player.analyser.getByteFrequencyData(array)
+      var step = Math.round(array.length / meterNum)
+      this.player.ctx.clearRect(0, 0, canvas.width, cheight)
       for (var i = 0; i < meterNum; i++) {
           var value = array[i * step]
-          if (capYPositionArray.length < Math.round(meterNum)) {
-              capYPositionArray.push(value)
+          if (this.player.capYPositionArray.length < Math.round(meterNum)) {
+              this.player.capYPositionArray.push(value)
           }
-          this.ctx.fillStyle = capStyle;
-          //draw the cap, with transition effect
-          if (value < capYPositionArray[i]) {
-              this.ctx.fillRect(i * 12, cheight - (--capYPositionArray[i]), meterWidth, capHeight)
+          this.player.ctx.fillStyle = this.player.gradient
+          this.player.ctx.fillRect(i * meterGap, cheight - value, meterWidth, value + capHeight)
+          // 绘制cap
+          this.player.ctx.fillStyle = capStyle
+          if (value < this.player.capYPositionArray[i]) {
+            this.player.ctx.fillRect(i * meterGap, cheight - this.player.capYPositionArray[i], meterWidth, capHeight)
+            this.player.capYPositionArray[i] --
           } else {
-              this.ctx.fillRect(i * 12, cheight - value, meterWidth, capHeight)
-              capYPositionArray[i] = value
+            this.player.ctx.fillRect(i * meterGap, cheight - value, meterWidth, capHeight)
+            this.player.capYPositionArray[i] = value
           }
-          this.ctx.fillStyle = this.gradient //set the filllStyle to gradient for a better look
-          this.ctx.fillRect(i * 12 /*meterWidth+gap*/ , cheight - value + capHeight, meterWidth, cheight) //the meter
       }
       requestAnimationFrame(this.renderFrame)
+    },
+    startMusic (src) {
+      if (this.player.audio) {
+        this.player.audio.pause()
+        this.player.src = src
+      } else {
+        this.player.src = src
+        this.$nextTick(() => {
+          this.initPlayer()
+        })
+      }
+    },
+    toggleMusic () {
+      if (this.player.audio) {
+        if (this.player.playing) {
+          this.player.audio.pause()
+        } else {
+          this.player.audio.play()
+        }
+        this.player.playing = !this.player.playing
+      }
     }
   }
 }

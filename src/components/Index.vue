@@ -1,11 +1,5 @@
 <template>
   <div class="main">
-    <div class="control-btn">
-      <span class="image-btn end-btn" @click="turnLast"><img src="~@/assets/images/backward.png"/></span>
-      <span class="image-btn next-btn" @click="turnPrev"><img src="~@/assets/images/next.png"/></span>
-      <span class="image-btn prev-btn" @click="turnNext"><img src="~@/assets/images/prev.png"/></span>
-      <span class="image-btn home-btn" @click="turnFirst"><img src="~@/assets/images/forward.png"/></span>
-    </div>
     <div class="modal animated fadeIn" v-show="cropper.show">
       <input type="file" hidden ref="imageFile" accept="image/*" @change="changeImage"/>
       <transition enter-active-class="fadeIn" leave-active-class="fadeIn">
@@ -49,13 +43,26 @@
           <Back></Back>
         </div>
       </div>
-      <div class="pad" v-if="writepad.show">
+      <div class="writepad" v-show="writepad.show">
         <canvas id="writePad" :width="w" :height="h"></canvas>
       </div>
       <div class="music" :class="{'music-right': poemOdd, 'height': h}">
         <input type="file" id="musicFile" ref="musicFile" hidden accept="audio/*" @change="changeMusic" />
         <Player v-show="player.show"></Player>
       </div>
+    </div>
+    <div class="control top-control">
+      <span class="note-btn" @click="addNote"><img src="~@/assets/images/note.png"/></span>
+      <span class="write-btn" @click="addWrite"><img src="~@/assets/images/write.png"/></span>
+    </div>
+    <div class="control bottom-control">
+      <span class="end-btn" @click="turnLast"><img src="~@/assets/images/backward.png"/></span>
+      <span class="prev-btn" @click="turnNext"><img src="~@/assets/images/prev.png"/></span>
+      <span class="shuffle-btn" @click="shufflePage"><img src="~@/assets/images/shuffle.png"/></span>
+      <span class="page-current">{{ currentPage }} / {{ poems.length + 4 }}</span>
+      <span class="catalog-btn" @click="turnPage(3)"><img src="~@/assets/images/catalog.png"/></span>
+      <span class="next-btn" @click="turnPrev"><img src="~@/assets/images/next.png"/></span>
+      <span class="home-btn" @click="turnFirst"><img src="~@/assets/images/forward.png"/></span>
     </div>
   </div>
 </template>
@@ -71,7 +78,7 @@ import New from '@/components/New'
 import Recorder from '@/components/Recorder'
 import Player from '@/components/Player'
 import Catalog from '@/components/Catalog'
-import { getCatalog, updateAnyPoem, getLastPoem, getAuthorPoem } from '@/api/poem'
+import { getAllPoems, getCatalog, updateAnyPoem, getLastPoem, getAuthorPoem } from '@/api/poem'
 export default {
   name: 'Index',
   components: {
@@ -91,7 +98,8 @@ export default {
       catalog: [],
       poems: [],
       poemId: '',
-      poemPage: 0,
+      fromPage: 0,
+      currentPage: 0,
       poemOdd: false,     // 左页或者右页，影响部分布局
       // 图片裁剪
       cropper: {
@@ -127,6 +135,8 @@ export default {
     this.$bus.on('recordPoem', this.recordPoem)
     this.$bus.on('chooseImage', this.chooseImage)
     this.$bus.on('loadReads', this.loadReads)
+    this.$bus.on('pauseReads', this.pauseReads)
+    this.$bus.on('resumeReads', this.resumeReads)
     this.$bus.on('playMusic', this.playMusic)
     this.$bus.on('pauseMusic', this.pauseMusic)
     this.$bus.on('chooseMusic', this.chooseMusic)
@@ -138,6 +148,7 @@ export default {
       this.$nextTick(() => {
         this.initCropper()
         this.initTurn()
+        this.initWritePad()
       })
       this.inited = true
     }
@@ -165,31 +176,48 @@ export default {
     loadPoems () {
       getCatalog({}).then(res => {
         this.catalog = []
-        // 3为封面、添加、目录
-        var pageNum = 3
         res.forEach(author => {
           var item = {
             title: author._id,
-            page: pageNum,
             flag: true
           }
           this.catalog.push(item)
           author.poems.forEach(poem => {
             item = {
+              id: poem.id,
               title: poem.title,
-              page: pageNum
             }
-            pageNum ++
             this.catalog.push(item)
           })
         })
-        this.poems = res.reduce((all, author) => {
-          return all.concat(author.poems)
-        }, [])
-        if(this.inited) {
-          this.initTurn()
-        }
-        this.loading = false
+        getAllPoems({}).then(poems => {
+          this.poems = poems.map((poem, index) => {
+            return {
+              id: poem._id,
+              title: poem.title,
+              author: poem.author,
+              author_desc: poem.author_desc,
+              page: index + 4
+            }
+          })
+          this.catalog.forEach(item => {
+            var poem = null
+            if (item.flag) {
+              poem = this.poems.filter(function (p) {
+                return p.author == item.title && p.author_desc != ''
+              })[0]
+            } else {
+              poem = this.poems.filter(function (p) {
+                return p.id == item.id
+              })[0]
+            }
+            item.page = poem.page
+          })
+          if(this.inited) {
+            this.initTurn()
+          }
+          this.loading = false
+        })
       })
     },
     turnPage (num) {
@@ -207,11 +235,15 @@ export default {
     turnPrev () {
       $('#album').turn('previous')
     },
+    shufflePage () {
+      const num = Math.floor(Math.random() * this.poems.length) + 4
+      this.turnPage(num)
+    },
     poemAdded () {
       this.loadPoems()
     },
     editPoem (id, page) {
-      this.poemPage = page
+      this.fromPage = page
       this.$bus.emit('loadPoem', id, page)
       // 跳到添加页
       this.turnPage(2)
@@ -219,7 +251,7 @@ export default {
     // 编辑后处理
     poemEdited (id) {
       // 转回页面
-      this.turnPage(this.poemPage)
+      this.turnPage(this.fromPage)
       this.$bus.emit('refreshPoem', id)
     },
     openAlbum (page) {
@@ -232,6 +264,8 @@ export default {
         width: this.w,
         height: this.h,
         direction: 'rtl',
+        turnCorners: 'tl,tr',
+        acceleration: true,
         elevation: 50,
         gradients: true,
         autoCenter: true
@@ -241,9 +275,17 @@ export default {
           this.$bus.emit('toggleMusic')
           this.$bus.emit('resetPoem', this.poemId)
           this.player.show = false
+          this.currentPage = page
         }
       })
-      $('#album').turn("options", {turnCorners: "bl,br"});
+      $("#album").bind("start", function(event, pageObject, corner) {
+        if (corner=="tl" || corner=="tr") {
+          event.preventDefault();
+        }
+      })
+      $('#album').bind("turned", (event, page, view) => {
+        this.currentPage = page
+      })
     },
     // 初始化手写板
     initWritePad () {
@@ -370,15 +412,30 @@ export default {
      * 播放朗读 相关
      */
     loadReads (id, list) {
+      this.reader.index = -1
       this.poemId = id
       this.reader.list = list
       this.playReads()
     },
+    pauseReads () {
+      if (this.reader.playing) {
+        this.$refs.readerAudio.pause()
+        this.reader.playing = false
+      }
+    },
+    resumeReads () {
+      if (!this.reader.playing) {
+        this.$refs.readerAudio.play()
+        this.reader.playing = true
+      }
+    },
     playRead (item) {
-      this.$refs.readerAudio.src = this.$util.getFilePath('reads', this.poemId) + item.name
-      this.$refs.readerAudio.play()
-      this.reader.playing = true
-      this.$refs.readerAudio.addEventListener('ended', this.stopReads);
+      if (this.$refs.readerAudio) {
+        this.$refs.readerAudio.src = this.$util.getFilePath('reads', this.poemId) + item.name
+        this.$refs.readerAudio.play()
+        this.reader.playing = true
+        this.$refs.readerAudio.addEventListener('ended', this.stopReads);
+      }
     },
     stopReads () {
       this.reader.playing = false
@@ -394,6 +451,18 @@ export default {
         this.reader.index = -1
         this.$refs.readerAudio.removeEventListener('ended', this.playReads)
       }
+    },
+    /**
+     * 手写板 相关
+     */
+    addWrite () {
+      this.writepad.show = !this.writepad.show
+    },
+    /**
+     * 笔记 相关
+     */
+    addNote () {
+      
     }
   }
 }
@@ -415,14 +484,15 @@ export default {
         background: @page-bg;
       }
     }
-    .pad {
+    .writepad {
       .center-parent();
+      background: @write-bg;
       z-index: 3;
     }
     .music {
       position: absolute;
       width: auto;
-      bottom: @page-pad;
+      bottom: calc(@page-pad - 4px);
       margin-left: calc(@page-pad + 5px);
       z-index: 3;
     }
@@ -457,24 +527,28 @@ export default {
       }
     }
   }
-  .end-btn,.home-btn,.next-btn,.prev-btn {
-    .center-vertical();
-    .dark-btn();
-    .flash-btn();
+  .control {
+    display: flex;
+    flex-direction: row;
     z-index: 1;
+    .center-horizontal();
+    span {
+      .image-btn();
+      .dark-btn();
+      .flash-btn();
+      margin: 0px 8px;
+    }
   }
-  .end-btn {
-    left: 0px;
+  .top-control {
+    top: 2px;
   }
-  .home-btn {
-    right: 0px;
+  .bottom-control {
+    bottom: 2px;
+    .page-current {
+      color: @text-white;
+      .flex-center();
+      width: 80px;
+    }
   }
-  .next-btn {
-    right: 64px;
-  }
-  .prev-btn {
-    left: 64px;
-  }
-  
 }
 </style>

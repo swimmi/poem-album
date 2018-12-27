@@ -41,12 +41,12 @@
         <textarea class="input-control" type="text" rows="7" v-model="poem.content" onpaste="return false;"></textarea>
       </div>
       <div class="input-group">
-        <span class="input-label">{{ $str.poem_desc }}</span>
-        <textarea class="input-control" type="text" rows="3" v-model="poem.desc" onpaste="return false;"></textarea>
-      </div>
-      <div class="input-group">
         <span class="input-label">{{ $str.poem_annotation }}</span>
         <textarea class="input-control" type="text" rows="5" v-model="poem.annotation" onpaste="return false;"></textarea>
+      </div>
+      <div class="input-group">
+        <span class="input-label">{{ $str.poem_desc }}</span>
+        <textarea class="input-control" type="text" rows="3" v-model="poem.desc" onpaste="return false;"></textarea>
       </div>
     </div>
   </div>

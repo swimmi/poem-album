@@ -35,6 +35,7 @@ var strings = {
   end: '结束',
   back: '返回',
   recording: '录音中',
-  please_read: '请朗读'
+  please_read: '请朗读',
+  catalog: '目录'
 }
 module.exports = { strings }

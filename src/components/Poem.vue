@@ -3,9 +3,11 @@
   <div v-else class="poem">
     <div class="poem-header">
       <div class="poem-title">
-        <marquee v-if="poem.title.length >= 10" class="title title-long" direction="up" scrollamount="10">{{ poem.title }}</marquee>
+        <marquee v-if="poem.title.length > 12" class="title title-long" direction="up" scrollamount="10">{{ poem.title }}</marquee>
         <span v-else class="title">{{ poem.title }}</span>
-        <span class="edit-btn" @click="editPoem"><img src="~@/assets/images/edit.png"/></span>
+        <div class="title-btns">
+          <span class="edit-btn" @click="editPoem"><img src="~@/assets/images/edit.png"/></span>
+        </div>
       </div>
       <div class="poem-author">
         <span class="name">{{ poem.author }}</span>
@@ -18,21 +20,23 @@
     <div class="poem-main">
       <div class="poem-content">
         <transition enter-active-class="fadeIn" leave-active-class="fadeOut">
-        <div v-show="tip.show"
-          class="annotation-tip animated"
-          :style="{top: tip.position.top, right: tip.position.right}"
-          @mouseenter="stopTipHide"
-          @mouseleave="hideTip">
-          <span>{{ annotationText }}</span>
-        </div>
+          <div v-show="tip.show"
+            class="anno-tip animated"
+            :style="{top: tip.position.top, right: tip.position.right}"
+            @mouseenter="stopTipHide"
+            @mouseleave="hideTip">
+            <span>{{ annoText }}</span>
+          </div>
         </transition>
-        <div class="column animated fadeIn" v-for="(column, index) in pages[pageIndex]" :key="index">
+        <div class="anno-container">
+          <span class="column-anno"
+            v-for="(anno, index) in pageAnnos"
+            :style="{top: anno.index * fontHeight + 'px', right: (anno.column * columnWidth + 12) + 'px',}"
+            @mouseenter.stop="showTip(anno.num)"
+            @mouseleave.stop="hideTip">{{ $util.parseNumber(anno.num) }}</span>
+        </div>
+        <div class="column" v-for="(column, index) in pages[pageIndex]" :key="index">
           <span class="column-text" :class="{'prologue-text': isPrologue(index)}">{{ column }}</span>
-          <span class="column-annotation"
-            v-for="(a, ai) in annotationList[pageIndex][index]"
-            :style="{top: a.index * fontHeight + 'px'}"
-            @mouseenter.stop="showTip(index, ai)"
-            @mouseleave.stop="hideTip">{{ $util.parseNumber(a.num) }}</span>
         </div>
       </div>
       <div class="page-btn" v-show="pages.length > 1">
@@ -128,8 +132,8 @@ export default {
       columnSize: 16,
       maxColumn: 8,
       prologueColumns: [],
-      annotationList: [],
-      annotationText: '',
+      annoList: [],
+      annoText: '',
       // 注释提示
       tip: {
         show: false,
@@ -140,6 +144,11 @@ export default {
         started: false,
         playing: false
       },
+      reads: {
+        started: false,
+        playing: false,
+        index: -1
+      },
       loading: true
     }
   },
@@ -149,7 +158,16 @@ export default {
         return this.prologueColumns.indexOf(this.pageIndex * this.maxColumn + index) != -1
       }
     },
-    annotations () {
+    pageAnnos () {
+      var annos = []
+      this.annoList.forEach(anno => {
+        if (anno.page == this.pageIndex) {
+          annos.push(anno)
+        }
+      })
+      return annos
+    },
+    poemAnnos () {
       if (this.poem.annotation) {
         return this.poem.annotation.split(/\n/)
       } else {
@@ -186,8 +204,7 @@ export default {
       this.prologueColumns = []
       this.pages = []
       var page = []
-      this.annotationList = []
-      var pa = []
+      this.annoList = []
       // 添加段首标记
       var content = this.poem.content
       var hasPrologue = false
@@ -212,15 +229,17 @@ export default {
           var column = ''   // 当前列
           var n = 0         // 当前列注释数量
           var m = -1        // 当前列注释位置
-          pa[cIndex] = []
           // 处理注释
           do {
             if (m != -1) {
               num ++
-              pa[cIndex].push({
-                num: num,
-                index: m - n
-              })
+              const anno = {
+                page: pIndex,
+                column: cIndex,
+                index: m - n,
+                num: num
+              }
+              this.annoList.push(anno)
             }
             column = text.substr(i, size + n)
             m = column.indexOf('#', m + 1)
@@ -249,15 +268,13 @@ export default {
           }
           if (page.length == this.maxColumn + delta) {
             this.pages.push(page)
-            this.annotationList[pIndex] = pa
             pIndex ++
+            cIndex = -1
             page = []
-            pa = []
           }
           cIndex ++
         }
       }
-      this.annotationList[pIndex] = pa
       if (page.length > 0) {
         this.pages.push(page)
       }
@@ -267,15 +284,15 @@ export default {
       clearTimeout(this.tip.timeout)
     },
     // 显示注释
-    showTip (column, index) {
+    showTip (num) {
       this.stopTipHide()
-      const annotation = this.annotationList[this.pageIndex][column][index]
-      if (annotation) {
-        const tip = this.annotations[annotation.num - 1]
+      const anno = this.annoList[num - 1]
+      if (anno) {
+        const tip = this.poemAnnos[num - 1]
         if (tip) {
-          this.annotationText = this.$util.parseColumn(tip)
-          this.tip.position.top = ((annotation.index - 1) * this.fontHeight) + 'px'
-          this.tip.position.right = ((column * this.columnWidth) + 32) + 'px'
+          this.annoText = this.$util.parseColumn(tip)
+          this.tip.position.top = ((anno.index - 1) * this.fontHeight) + 'px'
+          this.tip.position.right = ((anno.column * this.columnWidth) + 32) + 'px'
           this.tip.show = true
         }
       }
@@ -337,9 +354,18 @@ export default {
     },
     readPoem () {
       if (this.poem.reads && this.poem.reads.length > 0) {
-        this.$bus.emit('loadReads', this.id, this.poem.reads)
-      } else {
-        this.recordPoem()
+        if(!this.reads.started) {
+          this.$bus.emit('loadReads', this.id, this.poem.reads)
+          this.reads.started = true
+          this.reads.playing = true
+        } else {
+          if (this.reads.playing) {
+            this.$bus.emit('pauseReads')
+          } else {
+            this.$bus.emit('resumeReads')
+          }
+          this.reads.playing = !this.reads.playing
+        }
       }
     },
     recordPoem () {
@@ -371,11 +397,21 @@ export default {
       .title-long {
         height: 350px;
       }
-      .edit-btn {
-        position: absolute;
-        .image-btn();
-        right: -52px;
-        top: 45px;
+      .title-btns {
+        span {
+          position: absolute;
+          right: -52px;
+          .image-btn();
+        }
+        .edit-btn {
+          top: 45px;
+        }
+        .note-btn {
+          top: 100px;
+        }
+        .write-btn {
+          top: 155px;
+        }
       }
     }
     .poem-author {
@@ -420,12 +456,17 @@ export default {
           font-size: 16px;
           color: @text-vice;
         }
-        .column-annotation {
+      }
+      .anno-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        .column-anno {
           position: absolute;
           display: block;
           width: 16px;
           height: 16px;
-          left: -4px;
           padding: 4px;
           font-size: 16px;
           color: @text-red;
@@ -434,7 +475,7 @@ export default {
           transform: scale(0.5, 0.5)
         }
       }
-      .annotation-tip {
+      .anno-tip {
         position: absolute;
         background: fadeIn(@accent-color, 10%);
         text-align: center;
@@ -489,7 +530,7 @@ export default {
       position: relative;
       flex: 1;
       width: 100%;
-      border: 1px solid @white-bg;
+      border: 1px solid @border-color;
       border-radius: @base-radius;
       .poem-play-btn {
         position: absolute;

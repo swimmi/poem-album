@@ -23,3 +23,9 @@ export const getAllPoems = async function () {
 export const getLastPoem = async function () {
   return (await api.get('/poem/last')).data
 }
+export const getAuthorPoem = async function () {
+  return (await api.post('/poem/author')).data
+}
+export const getCatalog = async function () {
+  return (await api.get('/poem/catalog')).data
+}

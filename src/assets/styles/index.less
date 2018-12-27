@@ -208,7 +208,7 @@ span {
   animation: flashBtn 3s infinite;
   @keyframes flashBtn {
     0% { opacity: 1; }
-    50% { opacity: .3; }
+    50% { opacity: .5; }
     100% { opacity: 1; }
   }
 }
@@ -235,4 +235,25 @@ span {
   50% {background-position: 100% 100%}
   75% {background-position: 0% 100%}
   100% {background-position: 0% 0%}
+}
+
+.float-start {
+  animation: bgFloat 60s ease-in-out infinite;
+}
+.float-reset {
+  background-position: 0% 0%;
+}
+.rotate-start {
+  animation: rotate 24s linear infinite;
+  @keyframes rotate
+  {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+}
+.rotate-reset {
+  transform: rotate(0deg);
+}
+.animation-pause {
+  animation-play-state: paused;
 }

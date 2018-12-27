@@ -15,7 +15,7 @@
       </transition>
       <div class="modal-btn btn-group">
         <span class="modal-title">{{ $str.choose_image }}</span>
-        <span class="image-btn" @click="selectImage"><img src="~@/assets/images/image.png"/></span>
+        <span class="image-btn" @click="selectImage"><img src="~@/assets/images/folder.png"/></span>
         <span class="image-btn" @click="cropper.show = false"><img src="~@/assets/images/close.png"/></span>
         <span class="image-btn" @click="uploadImage"><img src="~@/assets/images/ok.png"/></span>
       </div>
@@ -40,10 +40,10 @@
           <New></New>
         </div>
         <div class="page">
-          <Catalog></Catalog>
+          <Catalog :catalog="catalog"></Catalog>
         </div>
         <div class="page" v-for="(item, index) in poems">
-          <Poem :id="item._id" :page="index + 4" :odd="index % 2 == 0"></Poem>
+          <Poem :id="item.id" :page="index + 4" :odd="index % 2 == 0" :sibling="sibling(index)"></Poem>
         </div>
         <div class="page">
           <Back></Back>
@@ -52,7 +52,7 @@
       <div class="pad" v-if="writepad.show">
         <canvas id="writePad" :width="w" :height="h"></canvas>
       </div>
-      <div class="music" :class="{'music-right': poemOdd}">
+      <div class="music" :class="{'music-right': poemOdd, 'height': h}">
         <input type="file" id="musicFile" ref="musicFile" hidden accept="audio/*" @change="changeMusic" />
         <Player v-show="player.show"></Player>
       </div>
@@ -71,7 +71,7 @@ import New from '@/components/New'
 import Recorder from '@/components/Recorder'
 import Player from '@/components/Player'
 import Catalog from '@/components/Catalog'
-import { getAllPoems, updateAnyPoem, getLastPoem } from '@/api/poem'
+import { getCatalog, updateAnyPoem, getLastPoem, getAuthorPoem } from '@/api/poem'
 export default {
   name: 'Index',
   components: {
@@ -88,6 +88,7 @@ export default {
       inited: false,
       w: 0,
       h: 0,
+      catalog: [],
       poems: [],
       poemId: '',
       poemPage: 0,
@@ -119,6 +120,7 @@ export default {
   mounted() {
     this.$bus.on('turnPage', this.turnPage)
     this.$bus.on('editPoem', this.editPoem)
+    this.$bus.on('loadPoems', this.loadPoems)
     this.$bus.on('openAlbum', this.openAlbum)
     this.$bus.on('poemAdded', this.poemAdded)
     this.$bus.on('poemEdited', this.poemEdited)
@@ -140,6 +142,20 @@ export default {
       this.inited = true
     }
   },
+  computed: {
+    sibling () {
+      return function (index) {
+        if (index % 2 == 0) {
+          if (index == this.poems.length - 1) {
+            return ''
+          }
+          return this.poems[index + 1]._id
+        } else {
+          return this.poems[index - 1]._id
+        }
+      }
+    }
+  },
   methods: {
     init () {
       this.h = document.documentElement.clientHeight * .9
@@ -147,8 +163,29 @@ export default {
       this.loadPoems()
     },
     loadPoems () {
-      getAllPoems({}).then(res => {
-        this.poems = res
+      getCatalog({}).then(res => {
+        this.catalog = []
+        // 3为封面、添加、目录
+        var pageNum = 3
+        res.forEach(author => {
+          var item = {
+            title: author._id,
+            page: pageNum,
+            flag: true
+          }
+          this.catalog.push(item)
+          author.poems.forEach(poem => {
+            item = {
+              title: poem.title,
+              page: pageNum
+            }
+            pageNum ++
+            this.catalog.push(item)
+          })
+        })
+        this.poems = res.reduce((all, author) => {
+          return all.concat(author.poems)
+        }, [])
         if(this.inited) {
           this.initTurn()
         }
@@ -202,6 +239,8 @@ export default {
       $('#album').bind("turning", (event, page, view) => {
         if (this.player.show) {
           this.$bus.emit('toggleMusic')
+          this.$bus.emit('resetPoem', this.poemId)
+          this.player.show = false
         }
       })
       $('#album').turn("options", {turnCorners: "bl,br"});
@@ -295,7 +334,8 @@ export default {
         this.player.show = !this.player.show
       }
     },
-    playMusic (name, odd) {
+    playMusic (id, name, odd) {
+      this.poemId = id
       this.poemOdd = odd
       if (this.player.name == name) {
         this.$bus.emit('toggleMusic')
@@ -381,10 +421,9 @@ export default {
     }
     .music {
       position: absolute;
-      height: 320px;
       width: auto;
       bottom: @page-pad;
-      margin-left: calc(@page-pad + @footer-width + 4px);
+      margin-left: calc(@page-pad + 5px);
       z-index: 3;
     }
     .music-right {

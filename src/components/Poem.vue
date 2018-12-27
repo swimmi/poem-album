@@ -49,9 +49,20 @@
       <div class="poem-author-desc">
         <span>{{ poem.author_desc }}</span>
       </div>
-      <div class="poem-image" :style="{backgroundImage: 'url(' + poemImage + ')'}">
-        <span class="music-btn" :class="{'gray-filter': poem.music}" @click="playMusic"><img src="~@/assets/images/music.png" /></span>
-        <span class="change-btn" :class="{'gray-filter': poem.image}" @click="chooseImage"><img src="~@/assets/images/image.png" /></span>
+      <div class="poem-image" :class="{'float-start': music.started, 'animation-pause': !music.playing, 'float-reset': !music.started}" :style="{backgroundImage: 'url(' + poemImage + ')'}">
+        <div class="poem-play-btn" v-if="poem.music" @click="playMusic">
+          <img class="player-holder" src="~@/assets/images/audio_cover_holder.png" />
+          <img class="player-pointer" :class="{'pointer-off': music.playing, 'pointer-on': !music.playing}" src="~@/assets/images/audio_cover_pointer.png" />
+          <div class="player-cover flash-btn"
+            :class="{'gray-filter': !music.playing}">
+            <img v-if="music.playing" class="cover-img" src="~@/assets/images/music_on.svg" />
+            <img v-else class="cover-img" src="~@/assets/images/music_off.svg" />
+          </div>
+        </div>
+        <div class="poem-image-btn">
+          <span :class="{'gray-filter': !poem.music}" @click="chooseMusic"><img src="~@/assets/images/music.png" /></span>
+          <span :class="{'gray-filter': !poem.image}" @click="chooseImage"><img src="~@/assets/images/image.png" /></span>
+        </div>
       </div>
     </div>
     <div class="poem-stamp-container" v-show="pageIndex == pages.length - 1">
@@ -97,6 +108,10 @@ export default {
       type: Boolean,
       required: true
     },
+    sibling: {
+      type: String,
+      required: false
+    },
     page: {
       type: Number,
       required: true
@@ -121,6 +136,10 @@ export default {
         position: [0, 0],
         timeout: null
       },
+      music: {
+        started: false,
+        playing: false
+      },
       loading: true
     }
   },
@@ -139,12 +158,18 @@ export default {
     }
   },
   mounted () {
+    this.$bus.on('resetPoem', this.resetPoem)
     this.$bus.on('refreshPoem', this.refreshPoem)
     this.init()
   },
   methods: {
     init() {
       this.loadPoem()
+    },
+    initConfig () {
+      this.music = {
+        playing: false
+      }
     },
     loadPoem () {
       this.loading = true
@@ -286,17 +311,26 @@ export default {
     editPoem () {
       this.$bus.emit('editPoem', this.id, this.page)
     },
+    resetPoem (id) {
+      if (this.id == id) {
+        this.initConfig()
+      }
+    },
     refreshPoem (id) {
       if (this.id == id) {
         this.loadPoem()
       }
     },
     playMusic () {
+      this.music.started = true
+      this.music.playing = !this.music.playing
       if (this.poem.music) {
-        this.$bus.emit('playMusic', this.poem.music, this.odd)
-      } else {
-        this.$bus.emit('chooseMusic', this.id)
+        this.$bus.emit('playMusic', this.id, this.poem.music, this.odd)
+        this.$bus.emit('resetPoem', this.sibling)
       }
+    },
+    chooseMusic () {
+      this.$bus.emit('chooseMusic', this.id)
     },
     chooseImage () {
       this.$bus.emit('chooseImage', this.id)
@@ -311,6 +345,7 @@ export default {
     recordPoem () {
       this.$bus.emit('recordPoem', this.id)
       this.$bus.emit('pauseMusic')
+      this.music.playing = false
     }
   }
 }
@@ -456,20 +491,67 @@ export default {
       width: 100%;
       border: 1px solid @white-bg;
       border-radius: @base-radius;
-      .float-bg(60s);
-      .music-btn {
-        .image-btn();
+      .poem-play-btn {
         position: absolute;
-        bottom: 64px;
-        right: 0px;
+        width: 100px;
+        height: 130px;
+        left: -16px;
+        top: -32px;
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.5);
+        .hover-fade();
+        .player-holder {
+          position: relative;
+          width: 32px;
+          left: 50%;
+          transform: translate(-50%, 0);
+          z-index: 3;
+        }
+        .player-pointer {
+          position: relative;
+          width: 48px;
+          left: calc(50% - 10px);
+          top: -12px;
+          transform-origin: 8px 8px;
+          z-index: 2;
+        }
+        .player-cover {
+          .flex-center();
+          position: absolute;
+          width: 100px;
+          height: 100px;
+          bottom: 0px;
+          background-image: url('~@/assets/images/audio_cover_bg.png');
+          background-size: 100px;
+          background-repeat: no-repeat;
+          .cover-img {
+            width: 40px;
+          }
+        }
+        .pointer-on {
+          transition: all .7s;
+          transform: rotateZ(-30deg);
+        }
+        .pointer-off {
+          transition: all .7s;
+          transform: rotateZ(0deg);
+        }
       }
-      .change-btn {
-        .image-btn();
+      .poem-image-btn {
+        display: flex;
+        flex-direction: column;
         position: absolute;
         bottom: 0px;
         right: 0px;
         z-index: 9;
+        span {
+          .image-btn();
+        }
       }
+    }
+    .poem-float-bg {
+      .float-bg(60s);
     }
   }
   .poem-stamp-container {

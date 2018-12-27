@@ -27,7 +27,7 @@
       <div class="input-group">
         <span class="input-label required">{{ $str.poem_author }}</span>
         <input class="input-control input-inline" type="text" v-model="poem.author" />
-        <span class="input-label label-inline">{{ $str.poem_period }}</span>
+        <span class="input-label label-inline required">{{ $str.poem_period }}</span>
         <select class="input-control period" v-model="poem.period">
           <option v-for="(item, index) in periods" :value="item.id">{{ item.title }}</option>
         </select>
@@ -102,7 +102,7 @@ export default {
       }
     },
     submit () {
-      if (this.poem.type == 0 || this.poem.title == '' || this.poem.author == '' || this.poem.content == '') {
+      if (this.poem.type == 0 || this.poem.title == '' || this.poem.author == '' || this.poem.period == '' || this.poem.content == '') {
         alert(this.$str.input_required)
       } else {
         const id = this.poem._id
@@ -112,7 +112,7 @@ export default {
           })
         } else {
           addPoem({'poem': this.poem}).then(res => {
-            //this.$bus.emit('poemAdded')
+            this.$bus.emit('loadPoems')
           })
         }
       }

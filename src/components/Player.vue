@@ -12,8 +12,8 @@ export default {
         playing: false,
         audio: null,
         src: '',
-        width: 400,
-        height: 320,
+        width: 200,
+        height: 200,
         analyser: null,
         ctx: null,
         gradient: null,
@@ -24,7 +24,7 @@ export default {
   updated () {
     if (this.player.audio) {
       this.player.audio.play()
-      this.player.ctx.clearRect(0, 0, canvas.width, canvas.height)
+      this.player.ctx.clearRect(0, 0, this.player.width, this.player.height)
       this.player.playing = true
     }
   },
@@ -56,8 +56,8 @@ export default {
     renderFrame() {
       var cwidth = canvas.width - 2,
           cheight = canvas.height,
-          meterWidth = 8,
-          meterGap = 10,
+          meterWidth = 4,
+          meterGap = 6,
           capHeight = 2,
           capStyle = '#ffffffcc',
           meterNum = this.player.width / meterGap

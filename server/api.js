@@ -50,6 +50,37 @@ router.get('/poem/all', (req, res) => {
 router.get('/poem/last', (req, res) => {
   models.Poem.findOne({}).select('_id title').sort({'createdAt': -1}).exec((err, data) => {res.send(err?err:data)})
 })
+router.post('/poem/author', (req, res) => {
+  const author = req.body.author
+  models.Poem.find({'author': author}).select('_id title').sort({'period': 1, 'title': 1}).exec((err, data) => {res.send(err?err:data)})
+})
+router.get('/poem/catalog', async (req, res) => {
+  var anonymity
+  await models.Poem.
+  aggregate([
+    {$match: {'author': '佚名'}},
+    {$project: {id: '$_id', _id: 0, title: 1}},
+    {$sort: {'period': 1, 'title': 1}}
+  ]).
+  exec((err, sub_data) => {
+    anonymity = {
+      '_id': '佚名',
+      'period': null,
+      "poems": sub_data,
+      "count": sub_data.length
+    }
+  })
+  models.Poem.
+  aggregate([
+    {$match: {'author': {$not: /佚名/}}},
+    {$group: {_id: '$author', period: {$first: '$period'}, poems: {$push: {'id': '$_id', 'title': '$title'}}, count: {$sum: 1}}},
+    {$sort: {count: -1, 'author': -1, 'author_desc': -1, 'type': 1, 'title': 1}}
+  ]).
+  exec((err, data) => {
+    data.push(anonymity)
+    res.send(err?err:data)
+  })
+})
 router.post('/poem/search', (req, res) => {
   const key = req.body.keyword
   const reg = new RegExp(key)
@@ -62,6 +93,8 @@ router.post('/poem/search', (req, res) => {
     limit(limit).
     exec((err, data) => {res.send(err?err:data)})
 })
+
+
 // 获取服务器文件
 router.get('/:type/:id?/:name', function(req, res) {
   var type = req.params.type

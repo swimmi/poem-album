@@ -10,7 +10,7 @@
 @page-bg: #fdfdfb;
 @modal-bg: #0e0d0df1;
 @white-bg: #f4fffdd3;
-@write-bg: #e0d9c285;
+@write-bg: #b8a35d21;
 
 @text-white: #f8f8f8;
 @text-black: #333;
@@ -96,6 +96,24 @@ span {
     margin: 16px;
   }
 }
+.toolbar-input {
+  font-family: 'Kaiti';
+  height: 32px;
+  padding: 4px 16px;
+  margin: 0px 16px;
+  font-size: 16px;
+  color: @text-white;
+  letter-spacing: 2px;
+  background: transparent;
+  outline: none;
+  border: 2px @white-bg solid;
+  border-radius: @base-radius;
+  resize: none;
+  word-wrap: none;
+  overflow-y: visible;
+  z-index: 4;
+  .flash-btn();
+}
 
 .center-parent {
   position: absolute;
@@ -135,6 +153,54 @@ span {
     box-shadow: @shadow-color 2px 2px 20px;
   }
 }
+.shape-btn {
+  width: 32px;
+  height: 32px;
+  margin: 0px 8px;
+  background: fade(@white-bg, 50%);
+  border: 2px @white-bg solid;
+  .flex-center();
+  transition: all .5s;
+  cursor: pointer;
+  .color {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%!important;
+    transition: all .5s;
+  }
+  .stroke {
+    width: 8px;
+    height: 4px;
+    transition: all .5s;
+  }
+  &:hover {
+    border: 2px @text-white solid;
+    .color {
+      width: 32px;
+      height: 32px;
+    }
+    .stroke {
+      width: 32px;
+    }
+  }
+}
+.shape-on {
+  background: @text-white;
+  .color {
+    width: 32px;
+    height: 32px;
+  }
+  .stroke {
+    width: 32px;
+  }
+}
+.circle {
+  border-radius: 50%!important;
+}
+.square {
+  width: 28px;
+  height: 28px;
+}
 
 .gray-filter {
   filter: grayscale(80%);
@@ -152,19 +218,18 @@ span {
 .invisible {
   visibility: hidden;
 }
-
-.slide-in-left {
-  animation: slideInLeft 1s 1 forwards;
+.toolbar-in-left {
+  animation: slideInLeft 1s 1;
   @keyframes slideInLeft {
-    from { left: 36px; }
-    to { left: 64px; }
+    from { left: 0px; opacity: 0; }
+    to { left: 300px; opacity: 1; }
   }
 }
-.slide-out-left {
+.toolbar-out-left {
   animation: slideOutLeft 1s 1;
   @keyframes slideOutLeft {
-    from { left: 64px; }
-    to { left: 36px; }
+    from { left: 300px; }
+    to { left: 0px;} 
   }
 }
 

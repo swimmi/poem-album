@@ -26,6 +26,12 @@ export const getLastPoem = async function () {
 export const getAuthorPoem = async function () {
   return (await api.post('/poem/author')).data
 }
+export const getTitlePoem = async function (params) {
+  return (await api.post('/poem/title', params)).data
+}
 export const getCatalog = async function () {
   return (await api.get('/poem/catalog')).data
+}
+export const searchPoem = async function (keyword) {
+  return (await api.get('/poem/search?keyword=' + keyword)).data
 }

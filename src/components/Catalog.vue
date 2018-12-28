@@ -27,9 +27,6 @@ export default {
       periods: data.period
     }
   },
-  mounted () {
-    console.log(this.catalog)
-  },
   methods: {
     viewPoem (page) {
       this.$bus.emit('turnPage', page)
@@ -59,7 +56,8 @@ export default {
         max-height: 30vh;
         overflow: hidden;
         color: @text-gray;
-        margin: @mg / 2;
+        margin: 0px @mg / 2;
+        margin-top: @mg;
         .v-text(16px);
         &:hover {
           color: @text-black;

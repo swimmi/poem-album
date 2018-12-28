@@ -18,7 +18,7 @@
       </div>
       <div class="input-group">
         <span class="input-label required">{{ $str.poem_title }}</span>
-        <input class="input-control" type="text" v-model="poem.title" :placeholder="poem.shi ? '' : $str.poem_cipai_tip" />
+        <input class="input-control" :class="{'error-input': hasSameTitle }" type="text" v-model="poem.title" :placeholder="poem.shi ? '' : $str.poem_cipai_tip" @blur="checkTitle"/>
       </div>
       <div class="input-group">
         <span class="input-label">{{ $str.poem_prologue }}</span>
@@ -53,7 +53,7 @@
 </template>
 <script>
 import data from '@/store/data'
-import { addPoem, updatePoem, getPoem } from '@/api/poem'
+import { addPoem, updatePoem, getPoem, getTitlePoem } from '@/api/poem'
 export default {
   data () {
     return {
@@ -70,6 +70,7 @@ export default {
         annotation: '',
       },
       poemPage: 0,
+      hasSameTitle: false,
       types: data.type,
       periods: data.period,
       loading: true
@@ -96,10 +97,31 @@ export default {
         this.loading = false
       })
     },
+    checkTitle () {
+      if (this.poem.shi) {
+        getTitlePoem({'title': this.poem.title}).then(res => {
+          if (res.length > 0) {
+            this.hasSameTitle = true
+          } else {
+            this.hasSameTitle = false
+          }
+        })
+      }
+    },
     back () {
       if (this.poemPage > 0) {
         this.$bus.emit('turnPage', this.poemPage)
+        this.reset();
       }
+    },
+    reset () {
+      this.loading = true
+      setTimeout(() => {
+        this.loading = false
+        this.poem = {
+          shi: true
+        }
+      }, 100)
     },
     submit () {
       if (this.poem.type == 0 || this.poem.title == '' || this.poem.author == '' || this.poem.period == '' || this.poem.content == '') {
@@ -116,13 +138,7 @@ export default {
           })
         }
       }
-      this.loading = true
-      setTimeout(() => {
-        this.loading = false
-        this.poem = {
-          shi: true
-        }
-      }, 100)
+      this.reset()
     }
   }
 }
@@ -201,6 +217,9 @@ export default {
         &:hover {
           border: 1px solid fade(@white-bg, 30%);
         }
+      }
+      .error-input {
+        border: 1px solid @text-red;
       }
       input, textarea, select {
         font-family: 'Kaiti';

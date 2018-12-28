@@ -19,7 +19,6 @@ var strings = {
   poem_annotation: '注解',
   poem_image: '配图',
   poem_music: '配乐',
-  input_tip: '请输入',
   input_required: '请填写所有必填内容',
   prev: '后退',
   next: '前进',
@@ -36,6 +35,7 @@ var strings = {
   back: '返回',
   recording: '录音中',
   please_read: '请朗读',
-  catalog: '目录'
+  catalog: '目录',
+  search_tip: '上下而求索'
 }
 module.exports = { strings }

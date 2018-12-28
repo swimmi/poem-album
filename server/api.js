@@ -54,6 +54,10 @@ router.post('/poem/author', (req, res) => {
   const author = req.body.author
   models.Poem.find({'author': author}).select('_id title').sort({'period': 1, 'title': 1}).exec((err, data) => {res.send(err?err:data)})
 })
+router.post('/poem/title', (req, res) => {
+  const title = req.body.title
+  models.Poem.find({'title': title}).select('_id title author').sort({'period': 1, 'title': 1}).exec((err, data) => {res.send(err?err:data)})
+})
 router.get('/poem/catalog', (req, res) => {
   models.Poem.
   aggregate([
@@ -80,17 +84,18 @@ router.get('/poem/catalog', (req, res) => {
     })
   })
 })
-router.post('/poem/search', (req, res) => {
-  const key = req.body.keyword
-  const reg = new RegExp(key)
-  const page = req.body.page || 0
-  const limit = req.body.limit || 10
+router.get('/poem/search', (req, res) => {
+  const keyword = req.query.keyword
+  const reg = new RegExp(keyword)
   models.Poem.
-    find({$or: [{'title': {$regex: reg}}, {'content': {$regex: reg}}]}).
-    sort({'lastViewAt': -1}).
-    skip(page * limit).
-    limit(limit).
-    exec((err, data) => {res.send(err?err:data)})
+  aggregate([
+    {$match: {$or: [{'title': {$regex: reg}}, {'content': {$regex: reg}}, {'author': {$regex: reg}}, {'author_desc': {$regex: reg}}]}},
+    {$group: {_id: '$author', period: {$first: '$period'}, poems: {$push: {'id': '$_id', 'title': '$title'}}, count: {$sum: 1}}},
+    {$sort: {count: -1, 'author': -1, 'author_desc': -1, 'type': 1, 'title': 1}}
+  ]).
+  exec((err, data) => {
+    res.send(err?err:data)
+  })
 })
 
 

@@ -459,8 +459,6 @@ export default {
       }
       .anno-container {
         position: absolute;
-        width: 100%;
-        height: 100%;
         z-index: 2;
         .column-anno {
           position: absolute;

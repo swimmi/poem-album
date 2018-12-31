@@ -36,7 +36,8 @@ const poemSchema = Schema({
   status: {
     understand: { type: Boolean, default: false },    // 已理解
     recite: { type: Boolean, default: false },        // 可背诵
-    favorite: { type: Boolean, default: false }       // 是喜欢
+    favorite: { type: Boolean, default: false },      // 是喜欢
+    reading: { type: Boolean, default: false }           // 朗读中
   },
   hidden: { type: Boolean, default: false },
   lastViewAt: Date                            // 上次浏览

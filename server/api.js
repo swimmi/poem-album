@@ -45,7 +45,7 @@ router.post('/poem/get', (req, res) => {
   models.Poem.findById(req.body.id, (err, data) => {res.send(err?err:data)})
 })
 router.get('/poem/all', (req, res) => {
-  models.Poem.find({}).select('_id title author author_desc').exec((err, data) => {res.send(err?err:data)})
+  models.Poem.find({}).exec((err, data) => {res.send(err?err:data)})
 })
 router.get('/poem/last', (req, res) => {
   models.Poem.findOne({}).select('_id title').sort({'createdAt': -1}).exec((err, data) => {res.send(err?err:data)})
@@ -120,9 +120,6 @@ router.get('/:type/:id?/:name', function(req, res) {
 })
 // 上传文件到服务器
 router.post('/upload/', function(req, res) {
-  if (Object.keys(req.files).length == 0) {
-    return res.status(400).send('None')
-  }
   const type = req.body.type
   const id = req.body.id
   var dir = `${type}`

@@ -8,7 +8,7 @@
     </div>
     <div class="column-container">
       <span class="column prev-column">{{ textColumns[cIndex - 1] || $str.start }}</span>
-      <marquee v-if="textColumns[cIndex] && textColumns[cIndex].length >= 20" class="column column-long current-column" scrollamount="10" direction="up">{{ textColumns[cIndex] }}</marquee>
+      <marquee v-if="textColumns[cIndex] && textColumns[cIndex].length > 22" class="column column-long current-column" scrollamount="10" direction="up">{{ textColumns[cIndex] }}</marquee>
       <span v-else class="column" :class="{'current-column': cIndex < textColumns.length }">{{ textColumns[cIndex] }}</span>
       <span class="column next-column">{{ textColumns[cIndex + 1] || $str.end }}</span>
     </div>
@@ -41,7 +41,7 @@
       </div>
       <div class="record-btn" v-else>
         <div v-if="!isPlaying" class="record-bg" @click="playRecords">
-          <img src="~@/assets/images/play.png" />
+          <img src="~@/assets/images/play.png" style="marginLeft: 4px"/>
         </div>
         <div v-else class="record-bg" @click="pauseRecords">
           <img src="~@/assets/images/pause.png" />
@@ -59,20 +59,18 @@ import { getPoem, updateAnyPoem } from '@/api/poem'
 export default {
   data () {
     return {
-      id: '',
-      title: '',
-      author: '',
-      content: '',
+      poem: null,
       textColumns: [],
+      page: 0,
       reads: [],
       cIndex: 0,
       playIndex: -1,
       recorder: null,
+      audioContext: null,
       isRecording: false,
       isPlaying: false,
       isPaused: false,
       recordFile: '',
-      media: null,
       loading: true
     }
   },
@@ -84,41 +82,38 @@ export default {
   },
   methods: {
     initRecorder () {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      this.recorder = new Recorder(audioContext, {})
-      this.media = navigator.mediaDevices.getUserMedia({audio: true})
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      this.recorder = new Recorder(this.audioContext, {})
+      navigator.mediaDevices.getUserMedia({audio: true})
         .then(stream => {
+          window.localStream = stream
           this.recorder.init(stream)
         })
         .catch(err => console.log(err))
     },
-    loadRecorder (id) {
-      this.id = id
-      getPoem({id: id}).then(res => {
-        this.reads = []
-        this.title = res.title
-        this.author = res.author
-        this.content = res.content
-        if (res.prologue) {
-          this.content = res.prologue + this.content
-        }
-        this.content = this.content.replace(/#/g, '')
-        this.textColumns = this.$util.splitToSentences(this.content).map(item => {
-          return this.$util.parseColumn(item)
-        })
-        this.textColumns.unshift(this.title, this.author)
-        if (res.reads) {
-          res.reads.forEach((item, index) => {
-            this.reads.push({
-              text: this.textColumns[index],
-              name: item.name,
-              duration: item.duration
-            })
-          })
-          this.cIndex = res.reads.length
-        }
-        this.loading = false
+    loadRecorder (poem) {
+      this.poem = poem
+      this.reads = []
+      var content = this.poem.content
+      if (this.poem.prologue) {
+        content = this.poem.prologue + content
+      }
+      content = content.replace(/#/g, '')
+      this.textColumns = this.$util.splitToSentences(content).map(item => {
+        return this.$util.parseColumn(item)
       })
+      this.textColumns.unshift(this.poem.title, this.poem.author)
+      if (this.poem.reads) {
+        this.poem.reads.forEach((item, index) => {
+          this.reads.push({
+            text: this.textColumns[index],
+            name: item.name,
+            duration: item.duration
+          })
+        })
+        this.cIndex = this.poem.reads.length
+      }
+      this.loading = false
       this.initRecorder()
     },
     handleRecord () {
@@ -160,7 +155,7 @@ export default {
           window.URL.revokeObjectURL(url)
         }
       } else {
-        this.$refs.audio.src = this.$util.getFilePath('reads', this.id) + item.name
+        this.$refs.audio.src = this.$util.getFilePath('reads', this.poem.id) + item.name
       }
       this.$refs.audio.play()
       this.isPlaying = true
@@ -201,6 +196,7 @@ export default {
     emptyRecords () {
       this.isPlaying = false
       this.cIndex = 0
+      this.playIndex = -1
       this.$refs.audio.pause()
       this.reads = []
     },
@@ -211,7 +207,7 @@ export default {
     async submit () {
       var form = new FormData()
       form.append('type', 'reads')
-      form.append('id', this.id)
+      form.append('id', this.poem.id)
       var recordList = []
       this.reads.forEach((item, index) => {
         var name = item.name
@@ -232,9 +228,11 @@ export default {
       const any = {
         'reads': recordList
       }
-      updateAnyPoem({'id': this.id, 'any': any}).then(res => {
+      updateAnyPoem({'id': this.poem.id, 'any': any}).then(res => {
         this.$bus.emit('poemRecorded')
-        this.$bus.emit('refreshPoem', this.id)
+        this.poem.reads = recordList
+        localStream.getAudioTracks()[0].stop()
+        //this.$bus.emit('reloadPoem', this.poem.page)
       })
     }
   }
@@ -259,11 +257,11 @@ export default {
       .v-text(20px);
       margin: 16px;
       color: @text-vice;
-      max-height: 480px;
+      max-height: 540px;
       overflow: hidden;
     }
     .column-long {
-      height: 480px;
+      height: 560px;
       text-align: center;
     }
     .current-column {
@@ -289,15 +287,16 @@ export default {
     }
   }
   .record-container {
+    @pad: 32px;
     flex: 1;
     overflow: hidden;
     z-index: 1;
     .record-scroll {
-      @pad: 32px;
-      width: calc(100% - @pad);
-      height: calc(100% - @pad);
-      overflow-y: auto;
-      padding: @pad/2;
+      flex-direction: column;
+      width: calc(100%);
+      height: calc(100% - @pad / 2);
+      overflow-y: scroll;
+      padding: @pad / 2;
       .record-tip {
         .center-parent();
         color: @text-red;
@@ -305,9 +304,9 @@ export default {
       }
       .record-item {
         display: flex;
-        width: 100%;
-        margin-bottom: @pad / 2;
+        width: calc(100% - @pad / 2);
         background: @white-bg;
+        margin-bottom: @pad / 2;
         cursor: pointer;
         border-radius: @base-radius;
         .hover-fade();

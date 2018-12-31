@@ -11,10 +11,10 @@
         <span class="input-label required">{{ $str.poem_type }}</span>
         <span class="input-control switch" @click="switchShi"><span :class="{'on': poem.shi}">{{ $str.shi }}</span><span :class="{'on': !poem.shi}">{{ $str.ci }}</span></span>
         <span class="input-label label-inline">{{ poem.shi ? $str.poem_category : $str.poem_cipai }}</span>
-        <select class="input-control type" v-if="poem.shi" v-model="poem.type">
+        <select class="input-control" v-if="poem.shi" v-model="poem.type">
           <option v-for="(item, index) in types" :value="item.title">{{ item.title }}</option>
         </select>
-        <input v-else class="input-control input-inline cipai" type="text" v-model="poem.type" @keyup="inputCiPai"/>
+        <input v-else class="input-control" type="text" v-model="poem.type" @keyup="inputCiPai"/>
       </div>
       <div class="input-group">
         <span class="input-label required">{{ $str.poem_title }}</span>
@@ -26,7 +26,7 @@
       </div>
       <div class="input-group">
         <span class="input-label required">{{ $str.poem_author }}</span>
-        <input class="input-control input-inline" type="text" v-model="poem.author" />
+        <input class="input-control" type="text" v-model="poem.author" />
         <span class="input-label label-inline required">{{ $str.poem_period }}</span>
         <select class="input-control period" v-model="poem.period">
           <option v-for="(item, index) in periods" :value="item.id">{{ item.title }}</option>
@@ -42,11 +42,11 @@
       </div>
       <div class="input-group">
         <span class="input-label">{{ $str.poem_annotation }}</span>
-        <textarea class="input-control" type="text" rows="5" v-model="poem.annotation" onpaste="return false;"></textarea>
+        <textarea class="input-control" type="text" rows="4" v-model="poem.annotation" onpaste="return false;"></textarea>
       </div>
       <div class="input-group">
         <span class="input-label">{{ $str.poem_desc }}</span>
-        <textarea class="input-control" type="text" rows="3" v-model="poem.desc" onpaste="return false;"></textarea>
+        <textarea class="input-control" type="text" rows="4" v-model="poem.desc" onpaste="return false;"></textarea>
       </div>
     </div>
   </div>
@@ -89,13 +89,13 @@ export default {
     inputCiPai () {
       this.poem.title = this.poem.type
     },
-    loadPoem (id, page) {
+    loadPoem (poem, page) {
       this.poemPage = page
       this.loading = true
-      getPoem({'id': id}).then(res => {
-        this.poem = res
+      setTimeout(() => {
+        this.poem = poem
         this.loading = false
-      })
+      }, 100)
     },
     checkTitle () {
       if (this.poem.shi) {
@@ -133,9 +133,7 @@ export default {
             this.$bus.emit('poemEdited', id)
           })
         } else {
-          addPoem({'poem': this.poem}).then(res => {
-            this.$bus.emit('loadPoems')
-          })
+          addPoem({'poem': this.poem})
         }
       }
       this.reset()
@@ -194,7 +192,6 @@ export default {
       margin-bottom: 8px;
       padding: 8px;
       .input-label {
-        display: table-cell;
         width: 50px;
         text-align: right;
         font-size: 16px;
@@ -211,7 +208,7 @@ export default {
       }
       .input-control {
         margin-left: 16px;
-        padding: 8px;
+        padding: 4px 8px;
         background: fade(@white-bg, 20%);
         border: 1px solid fade(@white-bg, 10%);
         &:hover {
@@ -223,7 +220,7 @@ export default {
       }
       input, textarea, select {
         font-family: 'Kaiti';
-        width: calc(100% - 140px);
+        flex: 1;
         background: transparent;
         outline: none;
         border: none;
@@ -235,19 +232,13 @@ export default {
         word-wrap: none;
         overflow-y: visible;
       }
-      select {
-        width: 160px;
-        color: @text-vice;
-        cursor: pointer;
-      }
       .switch {
         display: inline-block;
-        width: 187px;
         text-align: center;
+        line-height: 25px;
         cursor: pointer;
         span {
           display: inline-block;
-          padding: 2px;
           width: 50px;
           flex: 1;
           text-align: center;
@@ -259,11 +250,9 @@ export default {
           color: @text-white;
         }
       }
-      .input-inline {
-        width: 187px;
-      }
-      .cipai {
-        width: 142px;
+      select {
+        color: @text-vice;
+        cursor: pointer;
       }
     }
   }

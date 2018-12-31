@@ -1,12 +1,12 @@
+<!-- 再见！2018 -->
+<!-- 你好！2019 -->
 <template>
   <div class="main">
     <div class="modal animated fadeIn" v-show="cropper.show">
       <input type="file" hidden ref="imageFile" accept="image/*" @change="changeImage"/>
-      <transition enter-active-class="fadeIn" leave-active-class="fadeIn">
-        <div class="modal-wrapper cropper">
-          <img ref="cropperImage" :src="cropper.url"/>
-        </div>
-      </transition>
+      <div class="modal-wrapper cropper">
+        <img ref="cropperImage" :src="cropper.url"/>
+      </div>
       <div class="modal-btn btn-group">
         <span class="modal-title">{{ $str.choose_image }}</span>
         <span class="image-btn" @click="selectImage"><img src="~@/assets/images/folder.png"/></span>
@@ -19,8 +19,20 @@
       <div class="modal-btn btn-group">
         <span class="modal-title">{{ $str.record_read }}</span>
         <span class="image-btn" @click="emptyRecords"><img src="~@/assets/images/remove.png"/></span>
-        <span class="image-btn" @click="recorder.show = false"><img src="~@/assets/images/close.png"/></span>
+        <span class="image-btn" @click="closeRecorder"><img src="~@/assets/images/close.png"/></span>
         <span class="image-btn" @click="uploadRecords"><img src="~@/assets/images/ok.png"/></span>
+      </div>
+    </div>
+    <div class="modal animated fadeIn" v-show="reader.listShow">
+      <div class="modal-wrapper recorder">
+        <div class="reader-list-container">
+          <div class="reader-list-item" v-for="(poem, index) in reader.list" :key="index"><span>{{ poem.title }}</span></div>
+        </div>
+      </div>
+      <div class="modal-btn btn-group">
+        <span class="modal-title">{{ $str.read_list }}</span>
+        <span class="image-btn" @click="reader.listShow = false"><img src="~@/assets/images/close.png"/></span>
+        <span class="image-btn" @click=""><img src="~@/assets/images/ok.png"/></span>
       </div>
     </div>
     <div class="toolbar top-toolbar animated fadeInLeft">
@@ -40,6 +52,11 @@
           @click="toggleTool('search')">
           <img src="~@/assets/images/search.png"/>
         </span>
+        <span class="read-btn"
+          v-show="canRead"
+          @click="toggleTool('read')">
+          <img src="~@/assets/images/read.png"/>
+        </span>
       </div>
       <div class="toolbar-panel-container">
         <transition enter-active-class="fadeInRight" leave-active-class="fadeOutRight">
@@ -56,16 +73,39 @@
                 </span>
               </div>
             </div>
-            <span class="image-btn" @click="undoWrite"><img src="~@/assets/images/undo.png"/></span>
-            <span class="image-btn" @click="redoWrite"><img src="~@/assets/images/redo.png"/></span>
+            <div class="toolbar-panel-btn">
+              <span class="image-btn" @click="undoWrite"><img src="~@/assets/images/undo.png"/></span>
+              <span class="image-btn" @click="redoWrite"><img src="~@/assets/images/redo.png"/></span>
+              <span class="image-btn" @click="clearWrite"><img src="~@/assets/images/remove.png"/></span>
+            </div>
           </div>
         </transition>
         <transition enter-active-class="fadeInRight" leave-active-class="fadeOutRight">
           <div class="toolbar-panel search-panel animated" v-show="toolbar.action == 'search'">
             <div class="toolbar-panel-main animated" :class="{'shake': search.noResult}">
               <input v-model="search.keyword" type="text" class="search-input toolbar-input" :placeholder="$str.search_tip" @keyup.enter="doSearch"/>
+              <span v-show="search.showCount" class="search-result-count">{{ $str.search_count.format(resultCount) }}</span>
             </div>
             <span class="image-btn" @click="doSearch"><img src="~@/assets/images/ok.png"/></span>
+            <span class="image-btn" @click="cleanSearch"><img src="~@/assets/images/close.png"/></span>
+          </div>
+        </transition>
+        <transition enter-active-class="fadeInRight" leave-active-class="fadeOutRight">
+          <div class="toolbar-panel read-panel animated" v-show="toolbar.action == 'read'">
+            <div class="toolbar-panel-main animated" >
+              <span class="image-btn" @click="changeReadStyle"><img :src="readerPlayIcon" /></span>
+              <span class="image-btn" @click="alterReadPoem(false)"><img src="~@/assets/images/prev_one.png" /></span>
+              <span class="image-btn" @click="alterReadText(false)"><img src="~@/assets/images/prev.png" /></span>
+              <marquee v-if="readerText && readerText.length > 20" class="reader-text reader-text-long" scrollamount="5">{{ readerText }}</marquee>
+              <span v-else class="reader-text">{{ readerText }}</span>
+              <span class="image-btn" @click="alterReadText(true)"><img src="~@/assets/images/next.png" /></span>
+              <span class="image-btn" @click="alterReadPoem(true)"><img src="~@/assets/images/next_one.png" /></span>
+              <span class="image-btn" @click="reader.listShow = true"><img src="~@/assets/images/play_list.png" /></span>
+            </div>
+            <span class="image-btn" @click="toggleReads">
+              <img v-if="reader.playing" src="~@/assets/images/pause.png" />
+              <img v-else src="~@/assets/images/play.png" />
+            </span>
           </div>
         </transition>
       </div>
@@ -78,14 +118,15 @@
           <Cover></Cover>
         </div>
         <div class="page">
-          <New></New>
+          <section><Dashboard></Dashboard></section>
+          <section><New></New></section>
         </div>
         <div class="page">
           <div v-if="loadingCatalog"></div>
           <Catalog v-else :catalog="catalog"></Catalog>
         </div>
         <div class="page" v-for="(item, index) in poems">
-          <Poem :id="item.id" :page="index + 4" :odd="index % 2 == 0" :sibling="sibling(index)"></Poem>
+          <Poem :poem="item"></Poem>
         </div>
         <div class="page">
           <Back></Back>
@@ -94,9 +135,9 @@
       <div class="write" v-show="write.show">
         <canvas id="writePad" :width="w" :height="h"></canvas>
       </div>
-      <div class="music" :class="{'music-right': poemOdd, 'height': h}">
+      <div class="music" v-show="currentPage > 3">
         <input type="file" id="musicFile" ref="musicFile" hidden accept="audio/*" @change="changeMusic" />
-        <Player v-show="player.show"></Player>
+        <Player></Player>
       </div>
     </div>
     <div class="toolbar bottom-toolbar animated fadeInRight">
@@ -124,7 +165,8 @@ import New from '@/components/New'
 import Recorder from '@/components/Recorder'
 import Player from '@/components/Player'
 import Catalog from '@/components/Catalog'
-import { getAllPoems, getCatalog, updateAnyPoem, getLastPoem, getAuthorPoem, searchPoem } from '@/api/poem'
+import Dashboard from '@/components/Dashboard'
+import { getAllPoems, getCatalog, updateAnyPoem, searchPoem } from '@/api/poem'
 export default {
   name: 'Index',
   components: {
@@ -134,7 +176,8 @@ export default {
     New,
     Catalog,
     Recorder,
-    Player
+    Player,
+    Dashboard
   },
   data () {
     return {
@@ -143,10 +186,10 @@ export default {
       h: 0,
       catalog: [],
       poems: [],
-      poemId: '',
+      poemIndex: 0,
       fromPage: 0,
+      newPoem: null,
       currentPage: 0,
-      poemOdd: false,     // 左页或者右页，影响部分布局
       cropper: {
         self: null,
         url: '',
@@ -155,24 +198,27 @@ export default {
       recorder: {
         show: false
       },
-      player: {
-        name: '',
-        show: false
-      },
       reader: {
+        started: false,
         playing: false,
+        listShow: false,
         list: [],
-        index: -1
+        index: -1,
+        tIndex: -1,
+        style: 0,
+        styleTypes: ['order', 'loop', 'loop_one', 'shuffle']
       },
       write: {
         pad: null,
         show: false,
         color: 'black',
-        colors: ['black', 'white', 'red', 'yellow', '#6e7bb3e5'],
+        colors: ['black', 'white', 'red', 'yellow'],
         stroke: 1,
         strokes: [1, 2, 3],
         data: [],
         index: 0,
+        undoable: false,
+        redoable: false
       },
       toolbar: {
         inited: false,
@@ -180,6 +226,7 @@ export default {
         action: '',
       },
       search: {
+        showCount: true,
         noResult: false,
         keyword: ''
       },
@@ -190,17 +237,13 @@ export default {
   mounted() {
     this.$bus.on('turnPage', this.turnPage)
     this.$bus.on('editPoem', this.editPoem)
+    this.$bus.on('reloadPoem', this.reloadPoem)
     this.$bus.on('loadPoems', this.loadPoems)
     this.$bus.on('openAlbum', this.openAlbum)
-    this.$bus.on('poemAdded', this.poemAdded)
     this.$bus.on('poemEdited', this.poemEdited)
     this.$bus.on('recordPoem', this.recordPoem)
+    this.$bus.on('addReadPoem', this.addReadPoem)
     this.$bus.on('chooseImage', this.chooseImage)
-    this.$bus.on('loadReads', this.loadReads)
-    this.$bus.on('pauseReads', this.pauseReads)
-    this.$bus.on('resumeReads', this.resumeReads)
-    this.$bus.on('playMusic', this.playMusic)
-    this.$bus.on('pauseMusic', this.pauseMusic)
     this.$bus.on('chooseMusic', this.chooseMusic)
     this.$bus.on('poemRecorded', this.poemRecorded)
     this.init()
@@ -225,17 +268,32 @@ export default {
     }
   },
   computed: {
-    sibling () {
-      return function (index) {
-        if (index % 2 == 0) {
-          if (index == this.poems.length - 1) {
-            return ''
-          }
-          return this.poems[index + 1]._id
-        } else {
-          return this.poems[index - 1]._id
-        }
+    poem () {
+      return this.poems[this.poemIndex]
+    },
+    readerPoem () {
+      if (this.reader.index == -1) {
+        return null
+      } else {
+        return this.reader.list[this.reader.index]
       }
+    },
+    readerText () {
+      if (this.readerPoem == null || this.reader.tIndex == -1) {
+        return this.$str.end
+      } else {
+        return this.readerPoem.texts[this.reader.tIndex] || this.$str.end
+      }
+    },
+    readerRead () {
+      if (this.readerPoem == null || this.reader.tIndex == -1) {
+        return null
+      } else {
+        return this.readerPoem.reads[this.reader.tIndex]
+      }
+    },
+    readerPlayIcon () {
+      return require('@/assets/images/play_' + this.reader.styleTypes[this.reader.style] + '.png')
     },
     canNote () {
       return (this.toolbar.action == '' || this.toolbar.action == 'note') && this.currentPage > 3
@@ -245,6 +303,18 @@ export default {
     },
     canSearch () {
       return (this.toolbar.action == '' || this.toolbar.action == 'search')
+    },
+    canRead () {
+      return (this.toolbar.action == '' || this.toolbar.action == 'read') && this.reader.list.length > 0
+    },
+    resultCount () {
+      var count = 0
+      if (this.toolbar.action == 'search' && this.search.showCount) {
+        count = this.catalog.filter((item) => {
+          return !item.flag
+        }).length
+      }
+      return count
     }
   },
   methods: {
@@ -256,11 +326,6 @@ export default {
     loadPoems () {
       getCatalog({}).then(res => {
         this.loadCatalog(res)
-        if (this.inited) {
-          this.h = document.documentElement.clientHeight - 128
-          this.w = this.h * 1.6
-          $("#album").turn('resize')
-        }
       })
     },
     loadCatalog (res) {
@@ -281,15 +346,21 @@ export default {
         })
       })
       getAllPoems({}).then(poems => {
-        this.poems = poems.map((poem, index) => {
-          return {
-            id: poem._id,
-            title: poem.title,
-            author: poem.author,
-            author_desc: poem.author_desc,
-            page: index + 4
+        poems.forEach((poem, index) => {
+          poem.id = poem._id
+          poem.page = index + 4
+          var image = ''
+          if (poem.image) {
+            image = this.$util.getFilePath('images') + poem.image
+          } else {
+            image = 'static/images/default.jpg'
+          }
+          poem.image = image
+          if (poem.status.reading) {
+            this.addReadPoem(poem)
           }
         })
+        this.poems = poems
         this.catalog.forEach(item => {
           var poem = null
           if (item.flag) {
@@ -326,9 +397,6 @@ export default {
       const num = Math.floor(Math.random() * this.poems.length) + 4
       this.turnPage(num)
     },
-    poemAdded () {
-      this.loadPoems()
-    },
     editPoem (id, page) {
       this.fromPage = page
       this.$bus.emit('loadPoem', id, page)
@@ -346,34 +414,33 @@ export default {
         this.turnPage(page)
       }, 1000)
     },
+    // 初始化翻页器
     initTurn () {
       $('#album').turn({
         width: this.w,
         height: this.h,
         direction: 'rtl',
+        display: 'single',
         turnCorners: 'tl,tr',
         acceleration: true,
-        elevation: 50,
+        elevation: 10,
         gradients: true,
         autoCenter: true
       })
       $('#album').bind("turning", (event, page, view) => {
-        if (this.player.show) {
-          this.$bus.emit('toggleMusic')
-          this.$bus.emit('resetPoem', this.poemId)
-          this.player.show = false
-        }
+        this.$bus.emit('stopMusic')
         this.currentPage = page
-        this.toolbar.action = ''
-        this.toolbar.show = true
+        if (page > 3 && page < $('#album').turn('pages') - 1) {
+          this.poemIndex = page - 4
+          if (this.poem.music) {
+            this.$bus.emit('loadMusic', this.poem.music)
+          }
+        }
       })
       $("#album").bind("start", function(event, pageObject, corner) {
         if (corner=="tl" || corner=="tr") {
           event.preventDefault();
         }
-      })
-      $('#album').bind("turned", (event, page, view) => {
-        this.currentPage = page
       })
     },
     // 初始化手写板
@@ -388,7 +455,8 @@ export default {
         const len = this.write.data.length - this.write.index - 1
         this.write.data.splice(this.write.index + 1, len, d.concat())
         this.write.index = this.write.data.length - 1
-        console.log(this.write.data)
+        this.write.redoable = false
+        this.write.undoable = true
       }
     },
     // 初始化Cropper
@@ -402,13 +470,12 @@ export default {
      * Poem Image 相关
      */
     // 打开文件选择
-    chooseImage (id) {
-      if (this.poemId == id && this.cropper.url != '') {
+    chooseImage () {
+      if (this.cropper.url != '') {
         this.cropper.show = true
       } else {
         this.selectImage()
       }
-      this.poemId = id
     },
     selectImage () {
       this.$refs.imageFile.click()
@@ -422,30 +489,28 @@ export default {
       this.cropper.show = true
     },
     uploadImage () {
-      const name = `${this.poemId}.png`
+      this.cropper.show = false
+      const name = `${this.poem.id}.png`
       this.cropper.self.getCroppedCanvas().toBlob((blob) => {
         var form = new FormData()
         form.append('type', 'images')
         form.append('file', blob, name)
-        this.$http.post('/api/upload', form)
-        const any = {
-          'image': name
-        }
-        updateAnyPoem({'id': this.poemId, 'any': any}).then(res => {
-          this.$bus.emit('refreshPoem', this.poemId)
+        this.$http.post('/api/upload', form).then(res => {
+          const any = {
+            'image': name
+          }
+          updateAnyPoem({'id': this.poem.id, 'any': any}).then(res => {
+            this.poem.image = this.$util.getFilePath('images') + name
+            this.$bus.emit('reloadImage', this.poem.id)
+          })
         })
       })
-      this.cropper.show = false
     },
     /**
      * Poem Music 相关
      */
     // 打开文件选择
-    chooseMusic (id) {
-      this.selectMusic()
-      this.poemId = id
-    },
-    selectMusic () {
+    chooseMusic () {
       this.$refs.musicFile.click()
     },
     // 已选择文件
@@ -456,7 +521,7 @@ export default {
     },
     // 上传文件
     uploadMusic (file) {
-      const name = `${this.poemId}.mp3`
+      const name = `${this.poem.id}.mp3`
       var form = new FormData()
       form.append('type', 'musics')
       form.append('file', file, name)
@@ -464,35 +529,17 @@ export default {
       const any = {
         'music': name
       }
-      updateAnyPoem({'id': this.poemId, 'any': any}).then(res => {
-        this.$bus.emit('refreshPoem', this.poemId)
+      updateAnyPoem({'id': this.poem.id, 'any': any}).then(res => {
+        this.poem.music = name
+        this.$bus.emit('loadMusic', name)
       })
-    },
-    pauseMusic () {
-      if (this.player.show) {
-        this.$bus.emit('toggleMusic')
-        this.player.show = !this.player.show
-      }
-    },
-    playMusic (id, name, odd) {
-      this.poemId = id
-      this.poemOdd = odd
-      if (this.player.name == name) {
-        this.$bus.emit('toggleMusic')
-        this.player.show = !this.player.show
-      } else {
-        this.$bus.emit('startMusic', this.$util.getFilePath('musics', name))
-        this.player.show = true
-      }
-      this.player.name = name
     },
     /**
      * 录制朗读 相关
      */
-    recordPoem (id) {
+    recordPoem () {
       this.recorder.show = true
-      this.poemId = id
-      this.$bus.emit('loadRecorder', id)
+      this.$bus.emit('loadRecorder', this.poem)
     },
     playRecords () {
       this.$bus.emit('playRecords')
@@ -506,48 +553,141 @@ export default {
     poemRecorded () {
       this.recorder.show = false
     },
+    closeRecorder () {
+      this.recorder.show = false
+      localStream.getAudioTracks()[0].stop()
+    },
     /**
      * 播放朗读 相关
      */
-    loadReads (id, list) {
-      this.reader.index = -1
-      this.poemId = id
-      this.reader.list = list
-      this.playReads()
-    },
-    pauseReads () {
-      if (this.reader.playing) {
-        this.$refs.readerAudio.pause()
-        this.reader.playing = false
+    toggleReads () {
+      if (!this.reader.started) {
+        this.readText()
+        this.reader.started = true
+      } else {
+        if (this.reader.playing) {
+          this.$refs.readerAudio.pause()
+        } else {
+          this.$refs.readerAudio.play()
+        }
+        this.reader.playing = !this.reader.playing
       }
     },
-    resumeReads () {
-      if (!this.reader.playing) {
-        this.$refs.readerAudio.play()
-        this.reader.playing = true
+    alterReadText (flag) {
+      if (!flag) {
+        this.reader.tIndex -= 2
       }
-    },
-    playRead (item) {
-      if (this.$refs.readerAudio) {
-        this.$refs.readerAudio.src = this.$util.getFilePath('reads', this.poemId) + item.name
-        this.$refs.readerAudio.play()
-        this.reader.playing = true
-        this.$refs.readerAudio.addEventListener('ended', this.stopReads);
+      if (this.reader.tIndex < -2) {
+        this.reader.tIndex = this.readerPoem.texts.length - 1
       }
+      if (this.reader.tIndex > this.readerPoem.texts.length - 1) {
+        this.reader.tIndex = 0
+      }
+      this.readText()
     },
-    stopReads () {
+    alterReadPoem (flag) {
+      this.reader.index += (flag ? 1 : -1)
+      if (this.reader.index < 0) {
+        this.reader.index = this.reader.list.length - 1
+      }
+      if (this.reader.index > this.reader.list.length - 1) {
+        this.reader.index = 0
+      }
+      this.reader.tIndex = -1
+      this.readText()
+    },
+    resetReads () {
+      this.$refs.readerAudio.src = ''
       this.reader.playing = false
+      this.reader.index = -1
+      this.reader.tIndex = -1
+      this.reader.list = []
     },
-    playReads () {
-      if (this.reader.index == -1) {
-        this.$refs.readerAudio.addEventListener('ended', this.playReads)
+    readText () {
+      if (this.$refs.readerAudio) {
+        if (this.reader.index == -1) {
+          this.reader.index = 0
+        }
+        if (this.reader.tIndex < this.readerPoem.texts.length -1) {
+          this.reader.tIndex ++
+          this.$refs.readerAudio.src = this.$util.getFilePath('reads', this.readerPoem.id) + this.readerRead.name
+          this.$refs.readerAudio.play()
+          this.reader.playing = true
+          // 播放下一句
+          this.$refs.readerAudio.addEventListener('ended', this.readText)
+        } else {
+          // 播放下一首
+          switch (this.reader.style) {
+            case 0:   // 列表播放，不循环
+              this.$refs.readerAudio.removeEventListener('ended', this.readText)
+              if (this.reader.index < this.reader.list.length - 1) {
+                this.$refs.readerAudio.addEventListener('ended', this.handleRead('next'))
+              } else {
+                this.endRead()
+              }
+              break
+            case 1:   // 列表播放，循环
+              if (this.reader.index < this.reader.list.length - 1) {
+                this.$refs.readerAudio.removeEventListener('ended', this.readText)
+                this.$refs.readerAudio.addEventListener('ended', this.handleRead('next'))
+              } else {
+                this.$refs.readerAudio.removeEventListener('ended', this.readText)
+                this.$refs.readerAudio.addEventListener('ended', this.handleRead('loop_list'))
+              }
+              break
+            case 2:   // 单曲播放，循环
+              this.$refs.readerAudio.addEventListener('ended', this.handleRead)
+              break
+            case 3:   // 随机播放
+              this.$refs.readerAudio.removeEventListener('ended', this.readText)
+              this.$refs.readerAudio.addEventListener('ended', this.handleRead('shuffle'))
+              break
+          }
+        }
       }
-      this.reader.index ++
-      if (this.reader.index < this.reader.list.length) {
-        this.playRead(this.reader.list[this.reader.index])
-      } else  {
-        this.reader.index = -1
-        this.$refs.readerAudio.removeEventListener('ended', this.playReads)
+    },
+    handleRead (flag) {
+      switch (flag) {
+        case 'loop_list':
+          this.reader.index = -1
+          break
+        case 'next':
+          this.reader.index ++
+          break
+        case 'shuffle':
+          var list = this.reader.list.concat()
+          list.splice(list.indexOf(this.readerPoem), 1)
+          const p = list[Math.floor(Math.random() * list.length)]
+          this.reader.index = this.reader.list.indexOf(p)
+          break
+      }
+      this.reader.tIndex = -1
+      this.$refs.readerAudio.removeEventListener('ended', this.handleRead.bind(flag))
+      this.readText()
+    },
+    endRead () {
+      this.reader.started = false
+      this.reader.playing = false
+      this.reader.tIndex = -1
+      this.reader.index = -1
+    },
+    changeReadStyle () {
+      this.reader.style ++
+      if (this.reader.style == this.reader.styleTypes.length) {
+        this.reader.style = 0
+      }
+    },
+    // 添加到播放列表
+    addReadPoem (poem) {
+      if (poem.status.reading) {
+        var content = poem.content
+        if (poem.prologue) {
+          content = poem.prologue + content
+        }
+        var texts = this.$util.splitToSentences(content.replace(/#/g, ''))
+        texts.unshift(poem.title, poem.author)
+        poem.texts = texts
+        this.reader.list.push(poem)
       }
     },
     /**
@@ -556,7 +696,15 @@ export default {
     toggleTool (action) {
       switch (action) {
         case 'write':
+          if (this.write.show) {
+            this.saveWrite()
+          } else {
+            this.loadWrite()
+          }
           this.write.show = !this.write.show
+          break
+        case 'read':
+          this.reader.show = !this.reader.show
           break
       }
       if (!this.toolbar.inited) {
@@ -571,6 +719,7 @@ export default {
     },
     doSearch () {
       searchPoem(this.search.keyword).then(res => {
+        this.search.showCount = true
         if (res.length > 0) {
           this.loadCatalog(res)
           this.turnPage(3)
@@ -582,6 +731,25 @@ export default {
         }
       })
     },
+    cleanSearch () {
+      this.search.keyword = ''
+      this.doSearch()
+      this.toggleTool('search')
+    },
+    /**
+     * 手写板 相关
+     */
+    loadWrite () {
+
+    },
+    saveWrite () {
+      var data = this.write.pad.toDataURL('image/jpeg')
+      var dataArray = []
+      dataArray.push(data)
+      const any = {
+        'writes': dataArray
+      }
+    },
     undoWrite () {
       if (this.write.index > 0) {
         this.write.index --
@@ -589,8 +757,7 @@ export default {
         this.write.pad.clear()
         this.write.pad.fromData(data)
       } else {
-        this.write.index = -1
-        this.write.pad.clear()
+        this.clearWrite()
       }
     },
     redoWrite () {
@@ -600,6 +767,10 @@ export default {
         this.write.pad.clear()
         this.write.pad.fromData(data)
       }
+    },
+    clearWrite () {
+      this.write.pad.clear()
+      this.write.index = - 1
     }
   }
 }
@@ -621,7 +792,12 @@ export default {
       z-index: 2;
       cursor: pointer;
       .page {
+        display: flex;
         background: @page-bg;
+        section {
+          flex: 1;
+          position: relative;
+        }
       }
     }
     .write {
@@ -632,12 +808,10 @@ export default {
     .music {
       position: absolute;
       width: auto;
-      bottom: calc(@page-pad - 4px);
-      margin-left: calc(@page-pad + 5px);
+      height: calc(100% - @page-pad * 2);
+      bottom: @page-pad;
+      margin-left: @page-pad;
       z-index: 3;
-    }
-    .music-right {
-      left: 50%;
     }
   }
   .cropper {
@@ -652,6 +826,14 @@ export default {
       .center-parent();
       width: 800px;
       height: 600px;
+      .reader-list-container {
+        background: @white-bg;
+        padding: @page-pad;
+        height: calc(100% - @page-pad * 2);
+        .reader-list-item {
+          line-height: 32px;
+        }
+      }
     }
     .modal-btn {
       display: flex;
@@ -690,15 +872,20 @@ export default {
       }
     }
     .toolbar-panel-container {
+      color: @text-white;
       .toolbar-panel {
         display: flex;
-        width: 600px;
+        width: 800px;
         .toolbar-panel-main {
+          position: relative;
           flex: 1;
           .flex-center();
           .shape-container {
             margin: 0px 8px;
           }
+        }
+        .toolbar-panel-btn {
+          display: flex;
         }
       }
       .write-panel {
@@ -709,6 +896,19 @@ export default {
       .search-panel {
         .search-input {
           flex: 1;
+        }
+        .search-result-count {
+          position: absolute;
+          right: 32px;
+        }
+      }
+      .read-panel {
+        .flex-center();
+        .reader-text {
+          width: 360px;
+          font-size: 18px;
+          text-align: center;
+          .flash-text();
         }
       }
     }

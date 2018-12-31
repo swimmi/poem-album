@@ -30,12 +30,14 @@ var strings = {
   ed: '业已',
   choose_image: '拣择图景',
   record_read: '听取朗声',
+  read_list: '朗读列表',
   start: '开始',
   end: '结束',
   back: '返回',
   recording: '录音中',
   please_read: '请朗读',
   catalog: '目录',
-  search_tip: '上下而求索'
+  search_tip: '上下而求索',
+  search_count: `当前有 {0} 首诗词`
 }
 module.exports = { strings }

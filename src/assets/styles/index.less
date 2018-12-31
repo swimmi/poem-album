@@ -99,14 +99,14 @@ span {
 .toolbar-input {
   font-family: 'Kaiti';
   height: 32px;
-  padding: 4px 16px;
+  padding: 0px 16px;
   margin: 0px 16px;
   font-size: 16px;
   color: @text-white;
   letter-spacing: 2px;
   background: transparent;
   outline: none;
-  border: 2px @white-bg solid;
+  border: 1px @white-bg solid;
   border-radius: @base-radius;
   resize: none;
   word-wrap: none;
@@ -219,16 +219,16 @@ span {
   visibility: hidden;
 }
 .toolbar-in-left {
-  animation: slideInLeft 1s 1;
+  animation: slideInLeft 1s ease-in 1;
   @keyframes slideInLeft {
     from { left: 0px; opacity: 0; }
-    to { left: 300px; opacity: 1; }
+    to { left: 400px; opacity: 1; }
   }
 }
 .toolbar-out-left {
-  animation: slideOutLeft 1s 1;
+  animation: slideOutLeft 1s ease-out 1;
   @keyframes slideOutLeft {
-    from { left: 300px; }
+    from { left: 400px; }
     to { left: 0px;} 
   }
 }
